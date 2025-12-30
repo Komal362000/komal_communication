@@ -34,6 +34,10 @@ class Skeleton : public SkeletonBinding
                 (noexcept, override, final));
     MOCK_METHOD(void, PrepareStopOffer, (std::optional<UnregisterShmObjectTraceCallback>), (noexcept, override, final));
     MOCK_METHOD(BindingType, GetBindingType, (), (const, noexcept, override, final));
+    MOCK_METHOD(Result<std::unique_ptr<GenericSkeletonEventBinding>>,
+                CreateGenericEventBinding,
+                (std::string_view event_name, size_t size, size_t alignment),
+                (noexcept, override, final));
     MOCK_METHOD(bool, VerifyAllMethodsRegistered, (), (const, override));
 };
 
@@ -58,6 +62,12 @@ class SkeletonFacade : public SkeletonBinding
     BindingType GetBindingType() const noexcept override final
     {
         return skeleton_.GetBindingType();
+    }
+
+    Result<std::unique_ptr<GenericSkeletonEventBinding>>
+    CreateGenericEventBinding(std::string_view event_name, size_t size, size_t alignment) noexcept override final
+    {
+        return skeleton_.CreateGenericEventBinding(event_name, size, alignment);
     }
 
     bool VerifyAllMethodsRegistered() const override final
