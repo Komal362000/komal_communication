@@ -70,7 +70,7 @@ class SkeletonBase
      * \api
      * \brief Offer the respective service to other applications
      * \return On failure, returns an error code according to the SW Component Requirements SCR-17434118 and
-     *         SCR-566325.
+     * SCR-566325.
      */
     [[nodiscard]] ResultBlank OfferService() noexcept;
 
@@ -99,6 +99,9 @@ class SkeletonBase
     SkeletonBase(SkeletonBase&& other) noexcept;
     SkeletonBase& operator=(SkeletonBase&& other) noexcept;
 
+    
+    FlagOwner service_offered_flag_;
+
   private:
     std::unique_ptr<SkeletonBinding> binding_;
     SkeletonEvents events_;
@@ -110,8 +113,6 @@ class SkeletonBase
 
     [[nodiscard]] score::ResultBlank OfferServiceEvents() const noexcept;
     [[nodiscard]] score::ResultBlank OfferServiceFields() const noexcept;
-
-    FlagOwner service_offered_flag_;
 };
 
 class SkeletonBaseView
