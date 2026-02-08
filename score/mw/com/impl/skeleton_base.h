@@ -99,9 +99,6 @@ class SkeletonBase
     SkeletonBase(SkeletonBase&& other) noexcept;
     SkeletonBase& operator=(SkeletonBase&& other) noexcept;
 
-    
-    FlagOwner service_offered_flag_;
-
   private:
     std::unique_ptr<SkeletonBinding> binding_;
     SkeletonEvents events_;
@@ -113,6 +110,8 @@ class SkeletonBase
 
     [[nodiscard]] score::ResultBlank OfferServiceEvents() const noexcept;
     [[nodiscard]] score::ResultBlank OfferServiceFields() const noexcept;
+
+    FlagOwner service_offered_flag_;
 };
 
 class SkeletonBaseView
@@ -128,11 +127,6 @@ class SkeletonBaseView
     SkeletonBinding* GetBinding() const
     {
         return skeleton_base_.binding_.get();
-    }
-
-    bool IsOffered() const
-    {
-        return skeleton_base_.service_offered_flag_.IsSet();
     }
 
     void RegisterEvent(const std::string_view event_name, SkeletonEventBase& event)
