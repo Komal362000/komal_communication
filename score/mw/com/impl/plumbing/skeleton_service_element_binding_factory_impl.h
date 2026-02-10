@@ -21,7 +21,7 @@
 #include "score/mw/com/impl/configuration/service_instance_deployment.h"
 #include "score/mw/com/impl/configuration/someip_service_instance_deployment.h"
 #include "score/mw/com/impl/skeleton_base.h"
-#include "score/mw/com/impl/data_type_meta_info.h" 
+#include "score/mw/com/impl/data_type_meta_info.h"
 
 #include "score/mw/log/logging.h"
 
@@ -51,7 +51,7 @@ lola::SkeletonEventProperties GetSkeletonEventProperties(
     {
         score::mw::log::LogFatal("lola")
             << "Could not create SkeletonEventProperties from ServiceElementInstanceDeployment. Number of sample slots "
-                "was not specified in the configuration. Terminating.";
+               "was not specified in the configuration. Terminating.";
         std::terminate();
     }
 
@@ -59,7 +59,7 @@ lola::SkeletonEventProperties GetSkeletonEventProperties(
     {
         score::mw::log::LogFatal("lola")
             << "Could not create SkeletonEventProperties from ServiceElementInstanceDeployment. Max subscribers was "
-                "not specified in the configuration. Terminating.";
+               "not specified in the configuration. Terminating.";
         std::terminate();
     }
     return lola::SkeletonEventProperties{lola_service_element_instance_deployment.GetNumberOfSampleSlots().value(),
@@ -95,7 +95,7 @@ auto CreateSkeletonServiceElement(const InstanceIdentifier& identifier,
             if (lola_parent == nullptr)
             {
                 score::mw::log::LogFatal("lola") << "Skeleton service element could not be created because parent "
-                                                    "skeleton binding is a nullptr.";
+                                                 "skeleton binding is a nullptr.";
                 return nullptr;
             }
 
@@ -175,10 +175,8 @@ auto CreateGenericSkeletonServiceElement(const InstanceIdentifier& identifier,
                                                   lola_service_instance_deployment.instance_id_.value().GetId(),
                                                   element_type};
 
-            // Generic Constructor Call (Matches your updated GenericSkeletonEvent class)
-            // Order: Parent, FqId, Name, Properties, MetaInfo
             return std::make_unique<SkeletonServiceElement>(
-                *lola_parent, element_fq_id, service_element_name, skeleton_event_properties, meta_info);
+                *lola_parent, skeleton_event_properties, element_fq_id, meta_info, tracing::SkeletonEventTracingData{} );
         },
         [](const SomeIpServiceInstanceDeployment&) noexcept -> ReturnType {
             return nullptr;
