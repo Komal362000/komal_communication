@@ -10,7 +10,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
-#pragma once
+#ifndef SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_BINDING_H_
+#define SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_BINDING_H_
 
 #include "score/mw/com/impl/skeleton_event_binding.h"
 
@@ -34,3 +35,5 @@ class GenericSkeletonEventBinding : public SkeletonEventBindingBase
 };
 
 } // namespace score::mw::com::impl
+
+#endif // SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_BINDING_H_

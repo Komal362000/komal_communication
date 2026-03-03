@@ -10,7 +10,9 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
-#pragma once
+
+#ifndef SCORE_MW_COM_IMPL_BINDINGS_LOLA_SKELETON_EVENT_COMMON_H_
+#define SCORE_MW_COM_IMPL_BINDINGS_LOLA_SKELETON_EVENT_COMMON_H_
 
 
 #include "score/mw/com/impl/bindings/lola/element_fq_id.h"
@@ -108,3 +110,5 @@ class SkeletonEventCommon
 };
 
 } // namespace score::mw::com::impl::lola
+
+#endif // SCORE_MW_COM_IMPL_BINDINGS_LOLA_SKELETON_EVENT_COMMON_H_

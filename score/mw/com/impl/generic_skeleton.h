@@ -10,7 +10,8 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
-#pragma once
+#ifndef SCORE_MW_COM_IMPL_GENERIC_SKELETON_H_
+#define SCORE_MW_COM_IMPL_GENERIC_SKELETON_H_
 
 #include "score/mw/com/impl/generic_skeleton_event.h"
 // #include "score/mw/com/impl/generic_skeleton_field_binding.h" // New include - commented out as field not implemented
@@ -114,3 +115,5 @@ void StopOfferService() noexcept;
 //    FieldMap fields_; // commented out as field not implemented
 };
 } // namespace score::mw::com::impl
+
+#endif // SCORE_MW_COM_IMPL_GENERIC_SKELETON_H_
