@@ -1063,7 +1063,7 @@ EventDataControlComposite Skeleton::CreateEventControlComposite(const ElementFqI
                                                            std::forward_as_tuple(element_properties.number_of_slots,
                                                                                 element_properties.max_subscribers,
                                                                                 element_properties.enforce_max_samples,
-                                                                                control_qm_resource_->getMemoryResourceProxy()));
+                                                                                *control_qm_resource_));
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(control_qm.second, "Couldn't register/emplace event-meta-info in data-section.");
 
     EventDataControl* control_asil_result{nullptr};
@@ -1075,7 +1075,7 @@ EventDataControlComposite Skeleton::CreateEventControlComposite(const ElementFqI
             std::forward_as_tuple(element_properties.number_of_slots,
             element_properties.max_subscribers,
             element_properties.enforce_max_samples,
-            control_asil_resource_->getMemoryResourceProxy()));
+            *control_asil_resource_));
 
         // Suppress "AUTOSAR C++14 M7-5-1" rule. This rule declares:
         // A function shall not return a reference or a pointer to an automatic variable (including parameters), defined
@@ -1125,7 +1125,7 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(
 
     auto* data_storage = storage_resource_->construct<EventDataStorage<std::max_align_t>>(
         num_max_align_elements,
-        memory::shared::PolymorphicOffsetPtrAllocator<std::max_align_t>(storage_resource_->getMemoryResourceProxy()));
+        memory::shared::PolymorphicOffsetPtrAllocator<std::max_align_t>(*storage_resource_));
 
     auto inserted_data_slots = storage_->events_.emplace(std::piecewise_construct,
                                                          std::forward_as_tuple(element_fq_id),
