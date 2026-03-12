@@ -59,7 +59,7 @@ class GenericSkeletonEvent : public GenericSkeletonEventBinding
   private:
     DataTypeMetaInfo size_info_;
     const SkeletonEventProperties event_properties_;
-    score::cpp::optional<EventDataControlComposite> control_{};
+    std::optional<EventDataControlComposite<>> control_{};
     EventSlotStatus::EventTimeStamp current_timestamp_{1U};
     score::memory::shared::OffsetPtr<void> data_storage_{nullptr};
     bool qm_disconnect_{false};

@@ -50,7 +50,7 @@ class SkeletonEventCommon
   public:
     SkeletonEventCommon(Skeleton& parent,
                         const ElementFqId& event_fqn,
-                        score::cpp::optional<EventDataControlComposite>& event_data_control_composite_ref,
+                        std::optional<EventDataControlComposite<>>& event_data_control_composite_ref,
                         EventSlotStatus::EventTimeStamp& current_timestamp_ref,
                         impl::tracing::SkeletonEventTracingData tracing_data = {}) noexcept;
 
@@ -85,7 +85,7 @@ class SkeletonEventCommon
   private:
     Skeleton& parent_;
     const ElementFqId event_fqn_;
-    score::cpp::optional<EventDataControlComposite>&
+    std::optional<EventDataControlComposite<>>&
         event_data_control_composite_ref_;                    // Reference to the optional in derived class
     EventSlotStatus::EventTimeStamp& current_timestamp_ref_;  // Reference to the timestamp in derived class
     impl::tracing::SkeletonEventTracingData tracing_data_;

@@ -18,12 +18,11 @@
 namespace score::mw::com::impl::lola
 {
 
-SkeletonEventCommon::SkeletonEventCommon(
-    Skeleton& parent,
-    const ElementFqId& event_fqn,
-    score::cpp::optional<EventDataControlComposite>& event_data_control_composite_ref,
-    EventSlotStatus::EventTimeStamp& current_timestamp_ref,
-    impl::tracing::SkeletonEventTracingData tracing_data) noexcept
+SkeletonEventCommon::SkeletonEventCommon(Skeleton& parent,
+                                         const ElementFqId& event_fqn,
+                                         std::optional<EventDataControlComposite<>>& event_data_control_composite_ref,
+                                         EventSlotStatus::EventTimeStamp& current_timestamp_ref,
+                                         impl::tracing::SkeletonEventTracingData tracing_data) noexcept
     : parent_{parent},
       event_fqn_{event_fqn},
       event_data_control_composite_ref_{event_data_control_composite_ref},

@@ -1050,7 +1050,7 @@ void Skeleton::InitializeSharedMemoryForControl(
     control = memory->construct<ServiceDataControl>(*memory);
 }
 
-EventDataControlComposite Skeleton::CreateEventControlComposite(
+EventDataControlComposite<> Skeleton::CreateEventControlComposite(
     const ElementFqId element_fq_id,
     const SkeletonEventProperties& element_properties) noexcept
 {
@@ -1094,6 +1094,7 @@ EventDataControlComposite Skeleton::CreateEventControlComposite(
 }
 
 std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite>
+std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>>
 Skeleton::CreateEventDataFromOpenedSharedMemory(
     const ElementFqId element_fq_id,
     const SkeletonEventProperties& element_properties,
@@ -1143,7 +1144,7 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(
 
     return {score::memory::shared::OffsetPtr<void>(data_storage), CreateEventControlComposite(element_fq_id, element_properties)};
 }
-std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite> Skeleton::RegisterGeneric(
+std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>> Skeleton::RegisterGeneric(
     const ElementFqId element_fq_id,
     const SkeletonEventProperties& element_properties,
     const size_t sample_size,

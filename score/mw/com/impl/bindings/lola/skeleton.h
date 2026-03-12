@@ -118,7 +118,7 @@ class Skeleton final : public SkeletonBinding
     /// \return A pair containing:
     ///         - An OffsetPtr to the allocated data storage (void*).
     ///         - The EventDataControlComposite for managing the event's control data.
-    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite> RegisterGeneric(
+    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>> RegisterGeneric(
         const ElementFqId element_fq_id,
         const SkeletonEventProperties& element_properties,
         const size_t sample_size,
@@ -134,7 +134,7 @@ class Skeleton final : public SkeletonBinding
     ///         optionally for ASIL B) and an EventDataStorage which will be returned. If PrepareOffer opened the shared
     ///         memory, then the opened event data from the existing shared memory will be returned.
     template <typename SampleType>
-    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite> Register(
+    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>> Register(
         const ElementFqId element_fq_id,
         SkeletonEventProperties element_properties);
 
@@ -188,11 +188,11 @@ class Skeleton final : public SkeletonBinding
                                           const std::shared_ptr<score::memory::shared::ManagedMemoryResource>& memory);
 
     template <typename SampleType>
-    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite> OpenEventDataFromOpenedSharedMemory(
+    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>> OpenEventDataFromOpenedSharedMemory(
         const ElementFqId element_fq_id);
 
     template <typename SampleType>
-    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite> CreateEventDataFromOpenedSharedMemory(
+    std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>> CreateEventDataFromOpenedSharedMemory(
         const ElementFqId element_fq_id,
         const SkeletonEventProperties& element_properties);
 
@@ -200,8 +200,8 @@ class Skeleton final : public SkeletonBinding
     /// \param element_fq_id The full qualified ID of the element.
     /// \param element_properties Properties of the event.
     /// \return The EventDataControlComposite containing pointers to the control structures.
-    EventDataControlComposite CreateEventControlComposite(const ElementFqId element_fq_id,
-                                                          const SkeletonEventProperties& element_properties) noexcept;
+    EventDataControlComposite<> CreateEventControlComposite(const ElementFqId element_fq_id,
+                                                            const SkeletonEventProperties& element_properties) noexcept;
 
     /// \brief Creates shared memory storage for a generic (type-erased) event.
     /// \param element_fq_id The full qualified ID of the element.
@@ -209,11 +209,11 @@ class Skeleton final : public SkeletonBinding
     /// \param sample_size The size of a single data sample.
     /// \param sample_alignment The alignment of the data sample.
     /// \return A pair containing the data storage pointer (void*) and the control composite.
-    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite> CreateEventDataFromOpenedSharedMemory(
-        const ElementFqId element_fq_id,
-        const SkeletonEventProperties& element_properties,
-        size_t sample_size,
-        size_t sample_alignment) noexcept;
+    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>>
+    CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
+                                          const SkeletonEventProperties& element_properties,
+                                          size_t sample_size,
+                                          size_t sample_alignment) noexcept;
 
     class ShmResourceStorageSizes
     {
@@ -339,7 +339,7 @@ bool HasAsilBSupport(const InstanceIdentifier& identifier);
 
 template <typename SampleType>
 auto Skeleton::Register(const ElementFqId element_fq_id, SkeletonEventProperties element_properties)
-    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite>
+    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>>
 {
     // If the skeleton previously crashed and there are active proxies connected to the old shared memory, then we
     // re-open that shared memory in PrepareOffer(). In that case, we should retrieved the EventDataControl and
@@ -383,7 +383,7 @@ template <typename SampleType>
 // coverity[autosar_cpp14_m3_2_2_violation]
 // coverity[autosar_cpp14_a15_5_3_violation]
 auto Skeleton::OpenEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id)
-    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite>
+    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>>
 {
     // Suppress "AUTOSAR C++14 A15-5-3" rule findings. This rule states: "The std::terminate() function shall not be
     // called implicitly". This is a false positive, std::less which is used by std::map::find could throw an exception
@@ -450,7 +450,7 @@ template <typename SampleType>
 // coverity[autosar_cpp14_a15_5_3_violation : FALSE]
 auto Skeleton::CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
                                                      const SkeletonEventProperties& element_properties)
-    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite>
+    -> std::pair<EventDataStorage<SampleType>*, EventDataControlComposite<>>
 {
     auto* typed_event_data_storage_ptr = storage_resource_->construct<EventDataStorage<SampleType>>(
         element_properties.number_of_slots,

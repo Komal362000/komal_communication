@@ -118,7 +118,7 @@ class SkeletonEvent final : public SkeletonEventBinding<SampleType>
     const std::string_view event_name_;
     const SkeletonEventProperties event_properties_;
     EventDataStorage<SampleType>* event_data_storage_;
-    score::cpp::optional<EventDataControlComposite> event_data_control_composite_;
+    std::optional<EventDataControlComposite<>> event_data_control_composite_;
     EventSlotStatus::EventTimeStamp current_timestamp_;
     bool qm_disconnect_;
 
@@ -137,7 +137,7 @@ SkeletonEvent<SampleType>::SkeletonEvent(Skeleton& parent,
       event_name_{event_name},
       event_properties_{properties},
       event_data_storage_{nullptr},
-      event_data_control_composite_{score::cpp::nullopt},
+      event_data_control_composite_{},
       current_timestamp_{1U},
       qm_disconnect_{false},
       event_shared_impl_(parent,
