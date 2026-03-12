@@ -14,15 +14,13 @@
 #define SCORE_MW_COM_IMPL_GENERIC_SKELETON_H_
 
 #include "score/mw/com/impl/generic_skeleton_event.h"
-// #include "score/mw/com/impl/generic_skeleton_field_binding.h" // New include - commented out as field not implemented
-// #include "score/mw/com/impl/generic_skeleton_field.h" // commented out as field not implemented
 #include "score/mw/com/impl/instance_identifier.h"
 #include "score/mw/com/impl/instance_specifier.h"
 #include "score/mw/com/impl/skeleton_base.h"
 #include "score/mw/com/impl/data_type_meta_info.h"
 #include "score/mw/com/impl/service_element_map.h"
 #include "score/result/result.h"
-#include <score/span.hpp> 
+#include <score/span.hpp>
 
 #include <vector>
 #include <string_view>
@@ -37,22 +35,10 @@ struct EventInfo
     std::string_view name;
     DataTypeMetaInfo data_type_meta_info;
 };
-// struct FieldInfo // commented out as field not implemented
-// {
-//     std::string_view name;
-//      DataTypeMetaInfo data_type_meta_info;
-//     /// @brief The initial value for the field.
-//     /// @note Must be non-empty.
-//     /// @note The data must remain valid only for the duration of the Create() call.
-//     /// `initial_value_bytes.size()` must be less than or equal to `size_info.size`.
-//     /// The bytes are in the middleware’s “generic” field representation.
-//     score::cpp::span<const std::uint8_t> initial_value_bytes;
-//
-// };
-struct GenericSkeletonCreateParams
+
+struct GenericSkeletonServiceElementInfo
 {
     score::cpp::span<const EventInfo> events{};
-    //score::cpp::span<const FieldInfo> fields{};
 };
 
 /// @brief Represents a type-erased, runtime-configurable skeleton for a service instance.
@@ -64,7 +50,6 @@ class GenericSkeleton : public SkeletonBase
 {
   public:
     using EventMap = ServiceElementMap<GenericSkeletonEvent>;
-//      using FieldMap = ServiceElementMap<GenericSkeletonField>; // commented out as field not implemented
 /// @brief Creates a GenericSkeleton and all its service elements (events + fields) atomically.
 ///
 /// @contract
@@ -76,27 +61,20 @@ class GenericSkeleton : public SkeletonBase
 /// - On error, no partially-created elements are left behind.
 [[nodiscard]] static Result<GenericSkeleton> Create(
     const InstanceIdentifier& identifier,
-    const GenericSkeletonCreateParams& in,
-    MethodCallProcessingMode mode = MethodCallProcessingMode::kEvent) noexcept;
+    const GenericSkeletonServiceElementInfo& in) noexcept;
 
-/// @brief Same as Create(InstanceIdentifier, ...) but resolves the specifier first. 
+/// @brief Same as Create(InstanceIdentifier, ...) but resolves the specifier first.
 /// @param specifier The instance specifier.
 /// @param in Input parameters for creation.
 /// @param mode The method call processing mode.
 /// @return A GenericSkeleton or an error.
  [[nodiscard]] static Result<GenericSkeleton> Create(
     const InstanceSpecifier& specifier,
-    const GenericSkeletonCreateParams& in,
-    MethodCallProcessingMode mode = MethodCallProcessingMode::kEvent) noexcept;
+    const GenericSkeletonServiceElementInfo& in) noexcept;
 
 /// @brief Returns a const reference to the name-keyed map of events.
-/// @note The returned reference is valid as long as the GenericSkeleton lives. 
+/// @note The returned reference is valid as long as the GenericSkeleton lives.
 [[nodiscard]] const EventMap& GetEvents() const noexcept;
-
-
-/// @brief Returns a const reference to the name-keyed map of fields.
-/// @note The returned reference is valid as long as the GenericSkeleton lives. 
-//[[nodiscard]] const FieldMap& GetFields() const noexcept;
 
 /// @brief Offers the service instance.
 /// @return A blank result, or an error if offering fails.
@@ -110,9 +88,6 @@ void StopOfferService() noexcept;
 
     /// @brief This map owns all GenericSkeletonEvent instances.
     EventMap events_;
-
-    /// @brief This map owns all GenericSkeletonField instances.
-//    FieldMap fields_; // commented out as field not implemented
 };
 } // namespace score::mw::com::impl
 

@@ -34,8 +34,8 @@ class "mw::com::impl::GenericSkeleton" #yellow {
   using EventMap = ServiceElementMap<GenericSkeletonEvent>
   ..
   +GenericSkeleton(const InstanceIdentifier&, std::unique_ptr<SkeletonBinding>, MethodCallProcessingMode)
-  +Create(const InstanceIdentifier&, const GenericSkeletonCreateParams&, MethodCallProcessingMode): Result<GenericSkeleton>
-  +Create(const InstanceSpecifier&, const GenericSkeletonCreateParams&, MethodCallProcessingMode): Result<GenericSkeleton>
+  +Create(const InstanceIdentifier&, const GenericSkeletonServiceElementInfo&, MethodCallProcessingMode): Result<GenericSkeleton>
+  +Create(const InstanceSpecifier&, const GenericSkeletonServiceElementInfo&, MethodCallProcessingMode): Result<GenericSkeleton>
   +events_ : EventMap
   +OfferService(): ResultBlank
   +StopOfferService(): void

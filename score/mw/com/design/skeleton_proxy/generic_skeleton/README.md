@@ -15,7 +15,7 @@ The service instance must be defined in the `mw_com_config.json` file, just like
 
 ### 2. Creating and Using the Skeleton
 
-A `GenericSkeleton` is created by providing it with metadata about the service elements (e.g., events, fields) it will offer. This metadata, including memory size and alignment for each element, is passed via the `GenericSkeletonCreateParams` struct.
+A `GenericSkeleton` is created by providing it with metadata about the service elements (e.g., events, fields) it will offer. This metadata, including memory size and alignment for each element, is passed via the `GenericSkeletonServiceElementInfo` struct.
 
 The following example demonstrates how to create a generic skeleton that provides a single event.
 
@@ -45,7 +45,7 @@ const std::vector<score::mw::com::impl::EventInfo> events = {
 
 // 3. Populate the creation parameters.
 // Similar spans can be provided for fields and methods if they were supported.
-score::mw::com::impl::GenericSkeletonCreateParams create_params;
+score::mw::com::impl::GenericSkeletonServiceElementInfo create_params;
 create_params.events = events;
 
 // 4. Create the Generic Skeleton instance.

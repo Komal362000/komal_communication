@@ -112,7 +112,7 @@ TEST_F(GenericSkeletonTest, CreateWithInstanceSpecifierResolvesIdentifier)
         .WillOnce(Return(std::vector<InstanceIdentifier>{expected_identifier}));
 
     // When creating the skeleton
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
     auto result = GenericSkeleton::Create(instance_specifier, params);
 
     // Then creation succeeds
@@ -132,7 +132,7 @@ TEST_F(GenericSkeletonTest, CreateWithUnresolvedInstanceSpecifierFails)
         .WillOnce(Return(std::vector<InstanceIdentifier>{}));
 
     // When creating the skeleton
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
     auto result = GenericSkeleton::Create(instance_specifier, params);
 
     // Then creation fails with the expected error
@@ -152,7 +152,7 @@ TEST_F(GenericSkeletonTest, CreateFailsIfEventBindingCannotBeCreated)
     std::vector<EventInfo> event_storage;
     event_storage.push_back({event_name, {16, 8}});
 
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
     params.events = event_storage;
 
     // 2. Expect the Event Binding Factory to be called, but force it to FAIL
@@ -181,7 +181,7 @@ TEST_F(GenericSkeletonTest, CreateWithEventsInitializesEventBindings)
     std::vector<EventInfo> event_storage;
     event_storage.push_back({event_name, meta_info});
     
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
     params.events = event_storage; 
 
     // Expect the Event Factory to be called
@@ -218,7 +218,7 @@ TEST_F(GenericSkeletonTest, CreateWithDuplicateEventNamesFails)
     event_storage.push_back({event_name, {1, 1}});
     event_storage.push_back({event_name, {2, 2}}); // Duplicate
 
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
     params.events = event_storage;
 
     // Expecting at least one attempt to create an event binding
@@ -243,7 +243,7 @@ TEST_F(GenericSkeletonTest, CreateFailsIfMainBindingCannotBeCreated)
     EXPECT_CALL(skeleton_binding_factory_mock_guard_.factory_mock_, Create(_))
         .WillOnce(Return(ByMove(nullptr)));
 
-    GenericSkeletonCreateParams params;
+    GenericSkeletonServiceElementInfo params;
 
     // When creating the skeleton
     auto result = GenericSkeleton::Create(dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier(), params);

@@ -109,7 +109,7 @@ TEST_F(GenericSkeletonEventTest, AllocateBeforeOfferReturnsError)
     const DataTypeMetaInfo size_info{16, 8};
     const std::string event_name = "test_event"; 
     
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, size_info});
     create_params.events = events;
@@ -147,7 +147,7 @@ TEST_F(GenericSkeletonEventTest, SendBeforeOfferReturnsError)
     // Given a skeleton created with one event "test_event"
     const std::string event_name = "test_event";
     
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, {16, 8}});
     create_params.events = events;
@@ -189,7 +189,7 @@ TEST_F(GenericSkeletonEventTest, AllocateAndSendDispatchesToBindingAfterOffer)
     EXPECT_CALL(generic_event_binding_factory_mock_, Create(_, event_name, _))
         .WillOnce(Return(ByMove(std::move(mock_event_binding))));
 
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, {16, 8}});
     create_params.events = events;
@@ -237,7 +237,7 @@ TEST_F(GenericSkeletonEventTest, AllocateReturnsErrorWhenBindingFails)
     EXPECT_CALL(generic_event_binding_factory_mock_, Create(_, event_name, _))
         .WillOnce(Return(ByMove(std::move(mock_event_binding))));
 
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, {16, 8}});
     create_params.events = events;
@@ -280,7 +280,7 @@ TEST_F(GenericSkeletonEventTest, SendReturnsErrorWhenBindingFails)
     EXPECT_CALL(generic_event_binding_factory_mock_, Create(_, event_name, _))
         .WillOnce(Return(ByMove(std::move(mock_event_binding))));
 
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, {16, 8}});
     create_params.events = events;
@@ -323,7 +323,7 @@ TEST_F(GenericSkeletonEventTest, GetSizeInfoDispatchesToBinding)
     EXPECT_CALL(generic_event_binding_factory_mock_, Create(_, event_name, _))
         .WillOnce(Return(ByMove(std::move(mock_event_binding))));
 
-    GenericSkeletonCreateParams create_params;
+    GenericSkeletonServiceElementInfo create_params;
     std::vector<EventInfo> events;
     events.push_back({event_name, {16, 8}}); // Original creation info
     create_params.events = events;

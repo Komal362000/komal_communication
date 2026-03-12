@@ -504,7 +504,7 @@ int EventSenderReceiver::RunAsGenericSkeleton(const score::mw::com::InstanceSpec
     
     const impl::DataTypeMetaInfo size_info{sizeof(MapApiLanesStamped), alignof(MapApiLanesStamped)};
 
-   impl::GenericSkeletonCreateParams create_params;
+   impl::GenericSkeletonServiceElementInfo create_params;
     // Use a temporary vector to construct the span
     const std::vector<impl::EventInfo> events_vec = {
         {event_name, size_info}

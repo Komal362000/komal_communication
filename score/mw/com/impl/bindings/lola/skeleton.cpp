@@ -243,7 +243,6 @@ std::unique_ptr<Skeleton> Skeleton::Create(const InstanceIdentifier& identifier,
         score::mw::log::LogError("lola") << "Could not create partial restart directory.";
         return nullptr;
     }
-
     const auto& lola_service_instance_deployment = GetLolaServiceInstanceDeployment(identifier);
     const auto lola_instance_id = lola_service_instance_deployment.instance_id_.value().GetId();
     auto service_instance_existence_marker_file_path =
@@ -263,6 +262,7 @@ std::unique_ptr<Skeleton> Skeleton::Create(const InstanceIdentifier& identifier,
         return nullptr;
     }
 
+    }
     auto service_instance_existence_mutex_and_lock =
         std::make_unique<memory::shared::FlockMutexAndLock<memory::shared::ExclusiveFlockMutex>>(
             *service_instance_existence_marker_file);
@@ -274,6 +274,7 @@ std::unique_ptr<Skeleton> Skeleton::Create(const InstanceIdentifier& identifier,
         return nullptr;
     }
 
+    }
     const auto& lola_service_type_deployment = GetLolaServiceTypeDeployment(identifier);
     // Since we were able to flock the existence marker file, it means that either we created it or the skeleton that
     // created it previously crashed. Either way, we take ownership of the LockFile so that it's destroyed when this
@@ -1106,11 +1107,11 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(
     // Guard against over-aligned types (Short-term solution protection)
     if (sample_alignment > alignof(std::max_align_t))
     {
-        score::mw::log::LogFatal("Skeleton") 
-            << "Requested sample alignment (" << sample_alignment 
-            << ") exceeds max_align_t (" << alignof(std::max_align_t) 
+        score::mw::log::LogFatal("Skeleton")
+            << "Requested sample alignment (" << sample_alignment
+            << ") exceeds max_align_t (" << alignof(std::max_align_t)
             << "). Safe shared memory layout cannot be guaranteed.";
-            
+
         SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(sample_alignment <= alignof(std::max_align_t),"Requested sample alignment exceeds maximum supported alignment.");
     }
 
@@ -1119,7 +1120,7 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(
     const auto total_data_size_bytes = aligned_sample_size * element_properties.number_of_slots;
 
     // Convert total bytes to the number of std::max_align_t elements needed (round up)
-    const size_t num_max_align_elements = 
+    const size_t num_max_align_elements =
         (total_data_size_bytes + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t);
 
     auto* data_storage = storage_resource_->construct<EventDataStorage<std::max_align_t>>(
@@ -1135,7 +1136,7 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(
 
     const DataTypeMetaInfo sample_meta_info{sample_size, static_cast<std::uint8_t>(sample_alignment)};
     void* const event_data_raw_array = data_storage->data();
-    
+
     auto inserted_meta_info = storage_->events_metainfo_.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(element_fq_id),

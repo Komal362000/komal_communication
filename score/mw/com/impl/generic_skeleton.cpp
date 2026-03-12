@@ -13,17 +13,17 @@
 #include "score/mw/com/impl/generic_skeleton.h"
 
 #include "score/mw/com/impl/com_error.h"
-#include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory.h" 
-#include "score/mw/com/impl/runtime.h" 
-#include "score/mw/com/impl/plumbing/skeleton_binding_factory.h" 
+#include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory.h"
+#include "score/mw/com/impl/runtime.h"
+#include "score/mw/com/impl/plumbing/skeleton_binding_factory.h"
 #include "score/mw/com/impl/skeleton_binding.h"
-#include "score/mw/com/impl/configuration/lola_service_type_deployment.h" 
+#include "score/mw/com/impl/configuration/lola_service_type_deployment.h"
 
-#include <score/overload.hpp> 
+#include <score/overload.hpp>
 
 #include <cassert>
 #include <utility>
-#include <tuple> 
+#include <tuple>
 
 namespace score::mw::com::impl
 {
@@ -55,8 +55,7 @@ std::string_view GetEventName(const InstanceIdentifier& identifier, std::string_
 
 Result<GenericSkeleton> GenericSkeleton::Create(
     const InstanceSpecifier& specifier,
-    const GenericSkeletonCreateParams& in,
-    MethodCallProcessingMode mode) noexcept
+    const GenericSkeletonServiceElementInfo& in) noexcept
 {
     const auto instance_identifier_result = GetInstanceIdentifier(specifier);
 
@@ -66,18 +65,17 @@ Result<GenericSkeleton> GenericSkeleton::Create(
         return MakeUnexpected(ComErrc::kInstanceIDCouldNotBeResolved);
     }
 
-    return Create(instance_identifier_result.value(), in, mode); 
+    return Create(instance_identifier_result.value(), in, mode);
 }
 
 Result<GenericSkeleton> GenericSkeleton::Create(
     const InstanceIdentifier& identifier,
-    const GenericSkeletonCreateParams& in,
-    MethodCallProcessingMode mode) noexcept
+    const GenericSkeletonServiceElementInfo& in) noexcept
 {
     auto binding = SkeletonBindingFactory::Create(identifier);
     if (!binding)
     {
-       
+
         score::mw::log::LogError("GenericSkeleton") << "Failed to create SkeletonBinding for the given identifier.";
         return MakeUnexpected(ComErrc::kBindingFailure);
     }
@@ -97,7 +95,7 @@ Result<GenericSkeleton> GenericSkeleton::Create(
 
         // 1. Fetch the STABLE Name from Configuration
         std::string_view stable_name = GetEventName(identifier, info.name);
-        
+
         if (stable_name.empty())
         {
              score::mw::log::LogError("GenericSkeleton") << "Event name not found in configuration: " << info.name;
@@ -105,7 +103,7 @@ Result<GenericSkeleton> GenericSkeleton::Create(
         }
 
         auto event_binding_result = GenericSkeletonEventBindingFactory::Create(skeleton, info.name, info.data_type_meta_info);
-        
+
         if (!event_binding_result.has_value())
         {
             return MakeUnexpected(ComErrc::kBindingFailure);
@@ -113,11 +111,11 @@ Result<GenericSkeleton> GenericSkeleton::Create(
 
         const auto emplace_result = skeleton.events_.emplace(
             std::piecewise_construct,
-            std::forward_as_tuple(stable_name), 
-            std::forward_as_tuple(              
-                skeleton,                      
-                stable_name,                    
-                std::move(event_binding_result).value() 
+            std::forward_as_tuple(stable_name),
+            std::forward_as_tuple(
+                skeleton,
+                stable_name,
+                std::move(event_binding_result).value()
             )
         );
 
