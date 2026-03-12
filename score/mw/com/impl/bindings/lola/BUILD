@@ -205,15 +205,28 @@ cc_library(
 )
 
 cc_library(
-    name = "shared_data_structures",
-    srcs = [
-        "service_data_control.cpp",
-        "service_data_storage.cpp",
+    name = "service_data_storage",
+    srcs = ["service_data_storage.cpp"],
+    hdrs = ["service_data_storage.h"],
+    features = COMPILER_WARNING_FEATURES,
+    tags = ["FFI"],
+    visibility = [
+        "//score/mw/com/impl/bindings/lola/test_doubles:__pkg__",
     ],
-    hdrs = [
-        "service_data_control.h",
-        "service_data_storage.h",
+    deps = [
+        ":element_fq_id",
+        ":event_meta_info",
+        ":i_runtime",
+        "//score/mw/com/impl:runtime",
+        "@score_baselibs//score/memory/shared",
+        "@score_baselibs//score/os:unistd",
     ],
+)
+
+cc_library(
+    name = "service_data_control",
+    srcs = ["service_data_control.cpp"],
+    hdrs = ["service_data_control.h"],
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
     visibility = [
@@ -222,12 +235,9 @@ cc_library(
     deps = [
         ":application_id_pid_mapping",
         ":element_fq_id",
-        ":event",
+        ":event_control",
         ":event_meta_info",
-        ":i_runtime",
-        "//score/mw/com/impl:runtime",
         "@score_baselibs//score/memory/shared",
-        "@score_baselibs//score/os:unistd",
     ],
 )
 
@@ -282,7 +292,8 @@ cc_library(
         ":i_shm_path_builder",
         ":partial_restart_path_builder",
         ":proxy_instance_identifier",
-        ":shared_data_structures",
+        ":service_data_control",
+        ":service_data_storage",
         ":shm_path_builder",
         ":skeleton_instance_identifier",
         ":transaction_log_registration_guard",
@@ -340,7 +351,8 @@ cc_library(
         ":event_control",
         ":event_subscription_control",
         ":proxy_instance_identifier",
-        ":shared_data_structures",
+        ":service_data_control",
+        ":service_data_storage",
         ":shm_path_builder",
         ":slot_collector",
         ":subscription_state_machine",
@@ -739,7 +751,7 @@ cc_library(
     tags = ["FFI"],
     visibility = ["//score/mw/com/impl/bindings/lola:__subpackages__"],
     deps = [
-        ":shared_data_structures",
+        ":service_data_control",
         ":transaction_log_id",
         ":transaction_log_set",
         "//score/mw/com/impl:runtime",
@@ -1220,7 +1232,7 @@ cc_gtest_unit_test(
         ":element_fq_id",
         ":event_meta_info",
         ":runtime_mock",
-        ":shared_data_structures",
+        ":service_data_storage",
         "//score/mw/com/impl:binding_type",
         "//score/mw/com/impl/test:runtime_mock_guard",
         "@score_baselibs//score/memory/shared:map",
