@@ -49,6 +49,13 @@ score_gcc.toolchain(
     version = "12.2.0",
 )
 score_gcc.toolchain(
+    name = "score_gcc_aarch64_toolchain",
+    target_cpu = "aarch64",
+    target_os = "linux",
+    use_default_package = True,
+    version = "12.2.0",
+)
+score_gcc.toolchain(
     name = "score_qcc_x86_64_toolchain",
     sdp_version = "8.0.0",
     target_cpu = "x86_64",
@@ -67,6 +74,7 @@ score_gcc.toolchain(
 use_repo(
     score_gcc,
     "score_gcc_x86_64_toolchain",
+    "score_gcc_aarch64_toolchain",
     "score_qcc_aarch64_toolchain",
     "score_qcc_x86_64_toolchain",
 )
