@@ -11,14 +11,9 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 #include "sample_sender_receiver.h"
-#include "score/mw/com/impl/generic_proxy.h"
-#include "score/mw/com/impl/generic_proxy_event.h"
-#include "score/mw/com/impl/generic_skeleton.h"
-#include "score/mw/com/impl/handle_type.h"
+#include "score/mw/com/types.h"
 
 #include "score/concurrency/notification.h"
-
-#include "score/mw/com/impl/proxy_event.h"
 #include <score/assert.hpp>
 #include <score/hash.hpp>
 #include <score/optional.hpp>
@@ -158,7 +153,7 @@ score::cpp::optional<std::reference_wrapper<impl::ProxyEvent<MapApiLanesStamped>
     return proxy.map_api_lanes_stamped_;
 }
 
-score::cpp::optional<std::reference_wrapper<impl::GenericProxyEvent>> GetMapApiLanesStampedProxyEvent(
+score::cpp::optional<std::reference_wrapper<GenericProxyEvent>> GetMapApiLanesStampedProxyEvent(
     GenericProxy& generic_proxy)
 {
     const std::string event_name{"map_api_lanes_stamped"};
@@ -220,16 +215,16 @@ void ModifySampleValue(const SamplePtr<void>& sample)
 }
 
 template <typename ProxyType = IpcBridgeProxy>
-score::Result<impl::HandleType> GetHandleFromSpecifier(const InstanceSpecifier& instance_specifier)
+score::Result<HandleType> GetHandleFromSpecifier(const InstanceSpecifier& instance_specifier)
 {
     std::cout << ToString(instance_specifier, ": Running as proxy, looking for services\n");
-    ServiceHandleContainer<impl::HandleType> handles{};
+    ServiceHandleContainer<HandleType> handles{};
     do
     {
         auto handles_result = ProxyType::FindService(instance_specifier);
         if (!handles_result.has_value())
         {
-            return MakeUnexpected<impl::HandleType>(std::move(handles_result.error()));
+            return MakeUnexpected<HandleType>(std::move(handles_result.error()));
         }
         handles = std::move(handles_result).value();
         if (handles.size() == 0)
@@ -271,8 +266,7 @@ Result<SampleAllocateePtr<MapApiLanesStamped>> PrepareMapLaneSample(IpcBridgeSke
     return sample;
 }
 
-Result<SampleAllocateePtr<void>> PrepareMapLaneSample(impl::GenericSkeletonEvent& event,
-                                                      const std::size_t cycle)
+Result<SampleAllocateePtr<void>> PrepareMapLaneSample(GenericSkeletonEvent& event, const std::size_t cycle)
 {
     const std::default_random_engine::result_type seed{static_cast<std::default_random_engine::result_type>(
         std::chrono::steady_clock::now().time_since_epoch().count())};
@@ -483,7 +477,7 @@ int EventSenderReceiver::RunAsSkeleton(const score::mw::com::InstanceSpecifier& 
             {
                 std::cerr << "Failed to send sample: " << send_result.error() << "\n";
                 return EXIT_FAILURE;
-            }
+            }            
             event_published_ = true;
         }
         std::this_thread::sleep_for(cycle_time);
@@ -501,18 +495,15 @@ int EventSenderReceiver::RunAsGenericSkeleton(const score::mw::com::InstanceSpec
                                               const std::size_t num_cycles)
 {
     const auto event_name = "map_api_lanes_stamped";
-    
-    const impl::DataTypeMetaInfo size_info{sizeof(MapApiLanesStamped), alignof(MapApiLanesStamped)};
 
-   impl::GenericSkeletonServiceElementInfo create_params;
+    const DataTypeMetaInfo size_info{sizeof(MapApiLanesStamped), alignof(MapApiLanesStamped)};
+
+    GenericSkeletonServiceElementInfo create_params;
     // Use a temporary vector to construct the span
-    const std::vector<impl::EventInfo> events_vec = {
-        {event_name, size_info}
-    };
+    const std::vector<EventInfo> events_vec = {{event_name, size_info}};
     create_params.events = events_vec;
-    // create_params.fields = {}; // No fields yet
 
-    auto create_result = impl::GenericSkeleton::Create(instance_specifier, create_params);
+    auto create_result = GenericSkeleton::Create(instance_specifier, create_params);
     
     if (!create_result.has_value())
     {
@@ -525,7 +516,7 @@ int EventSenderReceiver::RunAsGenericSkeleton(const score::mw::com::InstanceSpec
     auto event_it = skeleton.GetEvents().find(event_name);
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_it != skeleton.GetEvents().cend(), "Event not found in GenericSkeleton");
     
-    auto& event = const_cast<impl::GenericSkeletonEvent&>(event_it->second);
+    auto& event = const_cast<GenericSkeletonEvent&>(event_it->second);
 
     const auto offer_result = skeleton.OfferService();
     if (!offer_result.has_value())
