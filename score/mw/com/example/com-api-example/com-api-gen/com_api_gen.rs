@@ -13,14 +13,14 @@
 
 use com_api::{interface, CommData, ProviderInfo, Publisher, Reloc, Subscriber};
 
-#[derive(Debug, CommData)]
+#[derive(Debug, Reloc, CommData)]
 #[repr(C)]
 #[comm_data(id = "Tire")]
 pub struct Tire {
     pub pressure: f32,
 }
 
-#[derive(Debug, CommData)]
+#[derive(Debug, Reloc, CommData)]
 #[repr(C)]
 // No explicit ID provided, so it will be auto-generated as "com_api_gen::Exhaust"
 pub struct Exhaust {}

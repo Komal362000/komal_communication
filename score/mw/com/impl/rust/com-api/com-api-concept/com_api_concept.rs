@@ -200,8 +200,9 @@ where
 /// Also requires the data type to implement Debug for logging and debugging purposes.
 /// 'static' lifetime ensures the data type does not contain non-static references.
 /// # Important
-/// Users must NOT implement the `CommData` trait manually. Always use this derive macro instead.
-/// like `#[derive(CommData)]` on the struct definition.
+/// Users must NOT implement the `CommData` trait manually. Always use the derive macros instead.
+/// Since `Reloc` is a supertrait of `CommData`, both must be derived explicitly:
+/// `#[derive(Reloc, CommData)]` on the struct definition.
 /// This is to ensure that all necessary trait bounds and metadata are correctly applied to the communication data types.
 /// Also if user wants to specify a custom ID for the communication data type,
 /// they can use the `#[comm_data(id = "CustomID")]` attribute on the struct definition.

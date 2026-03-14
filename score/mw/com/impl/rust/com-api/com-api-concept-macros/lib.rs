@@ -12,15 +12,22 @@
  ********************************************************************************/
 
 use proc_macro::TokenStream;
-use quote::{quote, ToTokens};
+use quote::quote;
 use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, Meta, Type};
 
-/// Derive macro for the `CommData` trait. This macro automatically implements the `CommData` trait
-/// for structs and C-like enums, ensuring that the type is marked with `#[repr(C)]`.
-/// It internally also derives the `Reloc` trait for the type.
+/// Derive macro for the `CommData` trait.
+///
+/// Implements `CommData` for a struct or C-like enum, providing a stable string identity
+/// (`const ID`) used by the framework to match types across process boundaries.
+///
+/// # Validation performed by this macro
+///
+/// This macro **only** validates the optional `#[comm_data(id = "…")]` attribute. It does
+/// **not** check `#[repr(C)]`, field relocatability, or enum layout — those invariants are
+/// already enforced by `#[derive(Reloc)]`, which must be placed before this macro.
 ///
 /// # Important
-/// Users must NOT implement the `CommData` trait manually. Always use this derive macro instead.
+/// Users must NOT implement the `CommData` trait manually. Always use the derive macros instead.
 ///
 /// It also supports an optional attribute to specify a custom ID string:
 /// ```
@@ -28,24 +35,26 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 /// ```
 /// If no custom ID is provided, a fully qualified type name is used as the ID.
 /// Example usage:
-/// ```
-/// pub trait CommData {
+/// ```ignore
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// pub struct MyData {
 ///    value: u32,
 /// }
 /// ```
 /// with custom ID:
-/// ```
-/// pub trait CommData {
+/// ``` ignore
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///   const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "CustomID_MyData")]
 /// pub struct MyData {
@@ -57,9 +66,6 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 pub fn derive_comm_data(input: TokenStream) -> TokenStream {
     let input_args = parse_macro_input!(input as DeriveInput);
     let ident_name = &input_args.ident;
-
-    // Call derive_reloc to generate Reloc implementation
-    let reloc_impl_tokens = derive_reloc(input_args.to_token_stream().into());
 
     //Add where clause if there are generics
     let generics = input_args.generics.clone();
@@ -87,8 +93,7 @@ pub fn derive_comm_data(input: TokenStream) -> TokenStream {
         }
     };
     // Merge the TokenStreams
-    let mut result = TokenStream::from(quote! { #comm_data_impl });
-    result.extend(reloc_impl_tokens);
+    let result = TokenStream::from(quote! { #comm_data_impl });
     result
 }
 
@@ -146,11 +151,19 @@ fn extract_id_from_attribute(attrs: &[syn::Attribute]) -> Result<Option<String>,
     }
     Ok(None)
 }
+
+/// Derive macro for the `Reloc` marker trait.
 ///
-/// Derive macro for the `Reloc` trait. This macro automatically implements the `Reloc` trait
-/// for structs, ensuring that all field types also implement `Reloc`. This also requires that the
-/// struct is marked with `#[repr(C)]`.
+/// Implements `Reloc` for a struct, tuple struct, or C-like enum, asserting that the type
+/// can be safely transferred across address-space boundaries (e.g. via shared memory IPC).
 ///
+/// # Validation performed by this macro
+///
+/// - **`#[repr(C)]`** must be present on the type.
+/// - It must be a struct, tuple struct, or C-like enum (no unions or non-C-like enums).
+///
+/// These checks are intentionally kept in `Reloc` rather than `CommData` so that each macro
+/// has a single, focused responsibility and error messages are unambiguous.
 #[proc_macro_derive(Reloc)]
 pub fn derive_reloc(input: TokenStream) -> TokenStream {
     let input_args = parse_macro_input!(input as DeriveInput);
@@ -391,11 +404,12 @@ fn reloc_fails_if_member_is_not_reloc_on_struct() {}
 fn reloc_fails_on_generic_types_that_do_not_impl_reloc() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// pub struct MyData {
 ///     value: u32,
 /// }
@@ -405,28 +419,30 @@ fn reloc_fails_on_generic_types_that_do_not_impl_reloc() {}
 fn comm_data_fails_without_repr_c() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///   const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// pub enum MyEnum {
 ///   A,
 ///   B,
-///  C(u32),
+///   C(u32),
 /// }
-/// This will fail because of non C-like enum
+/// // This will fail because of non C-like enum
 /// ```
 #[cfg(doctest)]
 fn comm_data_fails_on_non_c_like_enum() {}
 
 /// ```
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///  const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// pub enum MyEnum {
 ///  A,
@@ -439,11 +455,13 @@ fn comm_data_fails_on_non_c_like_enum() {}
 fn comm_data_works_on_c_like_enum() {}
 
 /// ```
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// unsafe impl Reloc for u32 {}
+/// pub trait CommData: Reloc + Send + 'static {
 /// const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// pub struct MyStruct {
 ///    value: u32,
@@ -456,11 +474,13 @@ fn comm_data_works_on_c_like_enum() {}
 fn comm_data_works_on_struct() {}
 
 /// ```
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// unsafe impl Reloc for u32 {}
+/// pub trait CommData: Reloc + Send + 'static {
 /// const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "CustomID_MyStruct")]
 /// pub struct MyStruct {
@@ -473,11 +493,12 @@ fn comm_data_works_on_struct() {}
 fn comm_data_works_on_struct_with_custom_id() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(wrong = "value")]
 /// pub struct MyData {
@@ -489,11 +510,12 @@ fn comm_data_works_on_struct_with_custom_id() {}
 fn comm_data_fails_with_invalid_attribute_key() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = 123)]
 /// pub struct MyData {
@@ -505,11 +527,12 @@ fn comm_data_fails_with_invalid_attribute_key() {}
 fn comm_data_fails_with_non_string_id() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data]
 /// pub struct MyData {
@@ -521,11 +544,12 @@ fn comm_data_fails_with_non_string_id() {}
 fn comm_data_fails_with_malformed_attribute() {}
 
 /// ```compile_fail
-/// pub trait CommData {
+/// pub unsafe trait Reloc {}
+/// pub trait CommData: Reloc + Send + 'static {
 ///    const ID: &'static str;
 /// }
-/// use com_api_concept_macros::CommData;
-/// #[derive(CommData)]
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "")]
 /// pub struct MyData {
