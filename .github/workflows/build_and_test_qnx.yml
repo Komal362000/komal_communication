@@ -29,6 +29,10 @@ on:
       SCORE_QNX_PASSWORD:
         required: true
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target'}}
+
 env:
   LICENSE_DIR: "/opt/score_qnx/license"
 jobs:
