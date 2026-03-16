@@ -13,7 +13,6 @@
 #include "score/mw/com/impl/bindings/lola/skeleton.h"
 
 #include "score/memory/shared/managed_memory_resource.h"
-#include "score/mw/com/impl/bindings/lola/generic_skeleton_event.h"
 #include "score/mw/com/impl/bindings/lola/i_shm_path_builder.h"
 #include "score/mw/com/impl/bindings/lola/messaging/i_message_passing_service.h"
 #include "score/mw/com/impl/bindings/lola/methods/proxy_method_instance_identifier.h"

@@ -235,11 +235,9 @@ cc_library(
     name = "generic_skeleton_event",
     srcs = [
         "generic_skeleton_event.cpp",
-        "skeleton_event_common.cpp",
     ],
     hdrs = [
         "generic_skeleton_event.h",
-        "skeleton_event_common.h",
     ],
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
@@ -259,7 +257,6 @@ cc_library(
 cc_library(
     name = "skeleton",
     srcs = [
-        "generic_skeleton_event.cpp",
         "skeleton.cpp",
         "skeleton_event.cpp",
         "skeleton_event_common.cpp",
@@ -267,7 +264,6 @@ cc_library(
         "skeleton_method.cpp",
     ],
     hdrs = [
-        "generic_skeleton_event.h",
         "skeleton.h",
         "skeleton_event.h",
         "skeleton_event_common.h",

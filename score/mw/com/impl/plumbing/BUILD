@@ -603,6 +603,7 @@ cc_library(
     deps = [
         ":skeleton_service_element_binding_factory_impl",
         "//score/mw/com/impl:i_generic_skeleton_event_binding_factory",
+        "//score/mw/com/impl/bindings/lola:generic_skeleton_event",
     ],
 )
 
