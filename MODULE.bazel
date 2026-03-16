@@ -52,6 +52,7 @@ score_gcc.toolchain(
     name = "score_gcc_aarch64_toolchain",
     target_cpu = "aarch64",
     target_os = "linux",
+    use_base_constraints_only = True,
     use_default_package = True,
     version = "12.2.0",
 )
