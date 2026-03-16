@@ -19,6 +19,9 @@ bazel_dep(name = "gcc_toolchain", version = "0.9.0", dev_dependency = True)
 gcc_toolchains = use_extension("@gcc_toolchain//toolchain:module_extensions.bzl", "gcc_toolchains", dev_dependency = True)
 gcc_toolchains.toolchain(
     name = "gcc_toolchain_x86_64",
+    extra_cxxflags = [
+        "-fdiagnostics-color=always",  # Adds copt to always use coloring in build output
+    ],
     extra_ldflags = [
         "-lstdc++",
         "-lrt",
