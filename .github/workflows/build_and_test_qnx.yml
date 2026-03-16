@@ -67,11 +67,12 @@ jobs:
         - name: Free Disk Space (Ubuntu)
           uses: ./actions/free_disk_space
         - name: Setup Bazel
-          uses: bazel-contrib/setup-bazel@0.15.0
+          uses: bazel-contrib/setup-bazel@0.18.0
           with:
             bazelisk-cache: true
-            disk-cache: ${{ github.workflow }}-${{ matrix.bazel-config }}
+            disk-cache: build_and_test_qnx${{ matrix.identifier }}
             repository-cache: true
+            cache-save: ${{ github.event_name == 'merge_group' }}
         - name: Allow linux-sandbox
           uses: ./actions/unblock_user_namespace_for_linux_sandbox
         - name: Setup QNX License
