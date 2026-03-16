@@ -1,0 +1,37 @@
+' *******************************************************************************
+' Copyright (c) {year} Contributors to the Eclipse Foundation
+'
+' See the NOTICE file(s) distributed with this work for additional
+' information regarding copyright ownership.
+'
+' This program and the accompanying materials are made available under the
+' terms of the Apache License Version 2.0 which is available at
+' https://www.apache.org/licenses/LICENSE-2.0
+'
+' SPDX-License-Identifier: Apache-2.0
+' *******************************************************************************
+
+@startuml
+
+!include ../../../../../../../../third_party/traceability/doc/sample_library/safety_analysis/fta_metamodel.puml
+
+$TopEvent("Wrong call result used", "Communication.WrongResultsUsed")
+
+$OrGate("Gate1", "TopEvent")
+$IntermediateEvent("Callee failed to provide correct result", "Event2", "Gate1")
+$IntermediateEvent("Caller accesses wrong result", "Event6", "Gate1")
+$OrGate("Gate2", "Event2")
+$IntermediateEvent("Callee did not provide result", "Event3", "Gate2")
+$OrGate("Gate3", "Event3")
+$BasicEvent("Callee signalled call finished before providing result", "Event5", "Gate3")
+$BasicEvent("Someone else signalled call finished wrongly", "Event7", "Gate3")
+
+$BasicEvent("Callee provided result in wrong location", "Event8", "Gate2")
+$BasicEvent("Callee provided result in wrong layout", "Event9", "Gate2")
+$OrGate("Gate4", "Event6")
+$BasicEvent("Caller used result from wrong location", "Event10", "Gate4")
+$BasicEvent("Caller used result in wrong layout", "Event11", "Gate4")
+$BasicEvent("Caller used result while concurrently updated", "Event12", "Gate4")
+
+
+@enduml
