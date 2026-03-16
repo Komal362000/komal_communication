@@ -20,21 +20,20 @@
 namespace score::mw::com::impl::lola
 {
 GenericSkeletonEvent::GenericSkeletonEvent(Skeleton& parent,
-                                             const SkeletonEventProperties& event_properties,
-                                             const ElementFqId& event_fqn,
-                                             const DataTypeMetaInfo& size_info,
-                                             impl::tracing::SkeletonEventTracingData tracing_data)
-    : size_info_(size_info), 
+                                           const SkeletonEventProperties& event_properties,
+                                           const ElementFqId& event_fqn,
+                                           const DataTypeMetaInfo& size_info,
+                                           impl::tracing::SkeletonEventTracingData tracing_data)
+    : size_info_(size_info),
       event_properties_(event_properties),
       event_shared_impl_(parent, event_fqn, control_, current_timestamp_, tracing_data)
 {
-
 }
 
 ResultBlank GenericSkeletonEvent::PrepareOffer() noexcept
 {
-    std::tie(data_storage_, control_) =
-        event_shared_impl_.GetParent().RegisterGeneric(event_shared_impl_.GetElementFQId(), event_properties_, size_info_.size, size_info_.alignment);
+    std::tie(data_storage_, control_) = event_shared_impl_.GetParent().RegisterGeneric(
+        event_shared_impl_.GetElementFQId(), event_properties_, size_info_.size, size_info_.alignment);
     event_shared_impl_.PrepareOfferCommon();
 
     return {};
@@ -49,12 +48,11 @@ Result<score::Blank> GenericSkeletonEvent::Send(score::mw::com::impl::SampleAllo
 
     auto control_slot_indicator = ptr->GetReferencedSlot();
     control_.value().EventReady(control_slot_indicator, ++current_timestamp_);
- 
+
     // Only call NotifyEvent if there are any registered receive handlers for each quality level (QM and ASIL-B).
     // This avoids the expensive lock operation in the common case where no handlers are registered.
     // Using memory_order_relaxed is safe here as this is an optimisation, if we miss a very recent
     // handler registration, the next Send() will pick it up.
-    
 
     if (event_shared_impl_.IsQmNotificationsRegistered() && !qm_disconnect_)
     {
@@ -62,7 +60,8 @@ Result<score::Blank> GenericSkeletonEvent::Send(score::mw::com::impl::SampleAllo
             .GetLolaMessaging()
             .NotifyEvent(QualityType::kASIL_QM, event_shared_impl_.GetElementFQId());
     }
-    if (event_shared_impl_.IsAsilBNotificationsRegistered() && event_shared_impl_.GetParent().GetInstanceQualityType() == QualityType::kASIL_B)
+    if (event_shared_impl_.IsAsilBNotificationsRegistered() &&
+        event_shared_impl_.GetParent().GetInstanceQualityType() == QualityType::kASIL_B)
     {
         GetBindingRuntime<lola::IRuntime>(BindingType::kLoLa)
             .GetLolaMessaging()
@@ -86,7 +85,8 @@ Result<score::mw::com::impl::SampleAllocateePtr<void>> GenericSkeletonEvent::All
         qm_disconnect_ = true;
         score::mw::log::LogWarn("lola")
             << __func__ << __LINE__
-            << "Disconnecting unsafe QM consumers as slot allocation failed on an ASIL-B enabled event: " << event_shared_impl_.GetElementFQId();
+            << "Disconnecting unsafe QM consumers as slot allocation failed on an ASIL-B enabled event: "
+            << event_shared_impl_.GetElementFQId();
         event_shared_impl_.GetParent().DisconnectQmConsumers();
     }
 
@@ -94,7 +94,7 @@ Result<score::mw::com::impl::SampleAllocateePtr<void>> GenericSkeletonEvent::All
     {
         //  Get the actual CONTAINER object (using the max_align_t type we allocated it with!)
         using StorageType = lola::EventDataStorage<std::max_align_t>;
-        StorageType* storage_ptr = data_storage_.get<StorageType>(); 
+        StorageType* storage_ptr = data_storage_.get<StorageType>();
         SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD(storage_ptr != nullptr);
 
         std::uint8_t* byte_ptr = reinterpret_cast<std::uint8_t*>(storage_ptr->data());
@@ -102,8 +102,8 @@ Result<score::mw::com::impl::SampleAllocateePtr<void>> GenericSkeletonEvent::All
         // Calculate the exact slot spacing based on alignment padding
         const auto aligned_size = memory::shared::CalculateAlignedSize(size_info_.size, size_info_.alignment);
         std::size_t offset = static_cast<std::size_t>(slot.GetIndex()) * aligned_size;
-        void* data_ptr = byte_ptr + offset;   
-        
+        void* data_ptr = byte_ptr + offset;
+
         auto lola_ptr = lola::SampleAllocateePtr<void>(data_ptr, control_.value(), slot);
         return impl::MakeSampleAllocateePtr(std::move(lola_ptr));
     }
@@ -135,6 +135,5 @@ BindingType GenericSkeletonEvent::GetBindingType() const noexcept
 {
     return BindingType::kLoLa;
 }
- 
 
-} // namespace score::mw::com::impl::lola
+}  // namespace score::mw::com::impl::lola

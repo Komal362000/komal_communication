@@ -14,6 +14,7 @@
 
 #include "score/mw/com/impl/bindings/mock_binding/generic_skeleton_event.h"
 #include "score/mw/com/impl/bindings/mock_binding/skeleton.h"
+#include "score/mw/com/impl/com_error.h"
 #include "score/mw/com/impl/i_binding_runtime.h"
 #include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory.h"
 #include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory_mock.h"
@@ -23,7 +24,6 @@
 #include "score/mw/com/impl/test/binding_factory_resources.h"
 #include "score/mw/com/impl/test/dummy_instance_identifier_builder.h"
 #include "score/mw/com/impl/test/runtime_mock_guard.h"
-#include "score/mw/com/impl/com_error.h" 
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -93,10 +93,9 @@ class GenericSkeletonTest : public ::testing::Test
     NiceMock<ServiceDiscoveryClientMock> service_discovery_client_mock_{};
 
     mock_binding::Skeleton* skeleton_binding_mock_{nullptr};
-    
+
     DummyInstanceIdentifierBuilder dummy_instance_identifier_builder_{};
 };
-
 
 TEST_F(GenericSkeletonTest, CreateWithInstanceSpecifierResolvesIdentifier)
 {
@@ -106,7 +105,7 @@ TEST_F(GenericSkeletonTest, CreateWithInstanceSpecifierResolvesIdentifier)
     // Given a valid string specifier
     auto instance_specifier = InstanceSpecifier::Create(std::string("path/to/my/service")).value();
     auto expected_identifier = dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier();
-    
+
     // Expect the Runtime to be asked to resolve it
     EXPECT_CALL(runtime_mock_guard_.runtime_mock_, resolve(instance_specifier))
         .WillOnce(Return(std::vector<InstanceIdentifier>{expected_identifier}));
@@ -121,12 +120,14 @@ TEST_F(GenericSkeletonTest, CreateWithInstanceSpecifierResolvesIdentifier)
 
 TEST_F(GenericSkeletonTest, CreateWithUnresolvedInstanceSpecifierFails)
 {
-    RecordProperty("Description", "Checks that GenericSkeleton returns kInstanceIDCouldNotBeResolved when InstanceSpecifier cannot be resolved.");
+    RecordProperty(
+        "Description",
+        "Checks that GenericSkeleton returns kInstanceIDCouldNotBeResolved when InstanceSpecifier cannot be resolved.");
     RecordProperty("TestType", "Requirements-based test");
 
     // Given a valid string specifier
     auto instance_specifier = InstanceSpecifier::Create(std::string("path/to/unknown/service")).value();
-    
+
     // Expect the Runtime to attempt to resolve it, but simulate failure by returning an empty vector
     EXPECT_CALL(runtime_mock_guard_.runtime_mock_, resolve(instance_specifier))
         .WillOnce(Return(std::vector<InstanceIdentifier>{}));
@@ -142,13 +143,15 @@ TEST_F(GenericSkeletonTest, CreateWithUnresolvedInstanceSpecifierFails)
 
 TEST_F(GenericSkeletonTest, CreateFailsIfEventBindingCannotBeCreated)
 {
-    RecordProperty("Description", "Checks that creation fails if the GenericSkeletonEventBindingFactory returns an error for any event.");
+    RecordProperty(
+        "Description",
+        "Checks that creation fails if the GenericSkeletonEventBindingFactory returns an error for any event.");
     RecordProperty("TestType", "Requirements-based test");
-    
+
     // 1. Given an identifier and configuration with one valid event
     auto identifier = dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifierWithEvent();
-    const std::string event_name = "test_event"; 
-    
+    const std::string event_name = "test_event";
+
     std::vector<EventInfo> event_storage;
     event_storage.push_back({event_name, {16, 8}});
 
@@ -180,15 +183,13 @@ TEST_F(GenericSkeletonTest, CreateWithEventsInitializesEventBindings)
 
     std::vector<EventInfo> event_storage;
     event_storage.push_back({event_name, meta_info});
-    
+
     GenericSkeletonServiceElementInfo params;
-    params.events = event_storage; 
+    params.events = event_storage;
 
     // Expect the Event Factory to be called
-    auto MetaMatcher = AllOf(
-        Field(&DataTypeMetaInfo::size, meta_info.size),
-        Field(&DataTypeMetaInfo::alignment, meta_info.alignment)
-    );
+    auto MetaMatcher =
+        AllOf(Field(&DataTypeMetaInfo::size, meta_info.size), Field(&DataTypeMetaInfo::alignment, meta_info.alignment));
 
     EXPECT_CALL(generic_skeleton_event_binding_factory_mock_, Create(_, event_name, MetaMatcher))
         .WillOnce(Return(ByMove(std::make_unique<NiceMock<mock_binding::GenericSkeletonEvent>>())));
@@ -200,23 +201,22 @@ TEST_F(GenericSkeletonTest, CreateWithEventsInitializesEventBindings)
     ASSERT_TRUE(result.has_value());
     const auto& events = result.value().GetEvents();
     ASSERT_EQ(events.size(), 1);
-    
+
     EXPECT_NE(events.find(event_name), events.cend());
 }
-
 
 TEST_F(GenericSkeletonTest, CreateWithDuplicateEventNamesFails)
 {
     RecordProperty("Description", "Checks that creating a skeleton with duplicate event names returns an error.");
     RecordProperty("TestType", "Requirements-based test");
-    
+
     // Given an identifier and configuration with duplicate event names
     auto identifier = dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifierWithEvent();
-    const std::string event_name = "test_event"; 
-    
+    const std::string event_name = "test_event";
+
     std::vector<EventInfo> event_storage;
     event_storage.push_back({event_name, {1, 1}});
-    event_storage.push_back({event_name, {2, 2}}); // Duplicate
+    event_storage.push_back({event_name, {2, 2}});  // Duplicate
 
     GenericSkeletonServiceElementInfo params;
     params.events = event_storage;
@@ -233,32 +233,31 @@ TEST_F(GenericSkeletonTest, CreateWithDuplicateEventNamesFails)
     EXPECT_EQ(result.error(), ComErrc::kServiceElementAlreadyExists);
 }
 
-
 TEST_F(GenericSkeletonTest, CreateFailsIfMainBindingCannotBeCreated)
 {
     RecordProperty("Description", "Checks that creation fails if the main SkeletonBinding factory returns null.");
     RecordProperty("TestType", "Requirements-based test");
-    
+
     // Given the binding factory returns nullptr
-    EXPECT_CALL(skeleton_binding_factory_mock_guard_.factory_mock_, Create(_))
-        .WillOnce(Return(ByMove(nullptr)));
+    EXPECT_CALL(skeleton_binding_factory_mock_guard_.factory_mock_, Create(_)).WillOnce(Return(ByMove(nullptr)));
 
     GenericSkeletonServiceElementInfo params;
 
     // When creating the skeleton
-    auto result = GenericSkeleton::Create(dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier(), params);
+    auto result =
+        GenericSkeleton::Create(dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier(), params);
 
     // Then creation fails with kBindingFailure
     ASSERT_FALSE(result.has_value());
     EXPECT_EQ(result.error(), ComErrc::kBindingFailure);
 }
 
-
 TEST_F(GenericSkeletonTest, OfferServicePropagatesToBindingAndDiscovery)
 {
-    RecordProperty("Description", "Checks that OfferService calls PrepareOffer on the binding and notifies ServiceDiscovery.");
+    RecordProperty("Description",
+                   "Checks that OfferService calls PrepareOffer on the binding and notifies ServiceDiscovery.");
     RecordProperty("TestType", "Requirements-based test");
-    
+
     // Given a created skeleton
     auto identifier = dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier();
     auto skeleton = GenericSkeleton::Create(identifier, {}).value();
@@ -273,7 +272,6 @@ TEST_F(GenericSkeletonTest, OfferServicePropagatesToBindingAndDiscovery)
     // Then it succeeds
     ASSERT_TRUE(result.has_value());
 }
-
 
 TEST_F(GenericSkeletonTest, StopOfferServicePropagatesToBindingAndDiscovery)
 {
@@ -291,7 +289,7 @@ TEST_F(GenericSkeletonTest, StopOfferServicePropagatesToBindingAndDiscovery)
 
     // Expecting StopOffer to trigger binding and discovery
     EXPECT_CALL(*skeleton_binding_mock_, PrepareStopOffer(_));
-    EXPECT_CALL(service_discovery_mock_, StopOfferService(identifier)); 
+    EXPECT_CALL(service_discovery_mock_, StopOfferService(identifier));
 
     // When stopping offer
     skeleton.StopOfferService();
@@ -299,12 +297,11 @@ TEST_F(GenericSkeletonTest, StopOfferServicePropagatesToBindingAndDiscovery)
     // Then (Verified by mock expectations)
 }
 
-
 TEST_F(GenericSkeletonTest, OfferServiceReturnsErrorIfBindingFails)
 {
     RecordProperty("Description", "Checks that OfferService returns an error if the binding's PrepareOffer fails.");
     RecordProperty("TestType", "Requirements-based test");
-    
+
     // Given a created skeleton
     auto identifier = dummy_instance_identifier_builder_.CreateValidLolaInstanceIdentifier();
     auto skeleton = GenericSkeleton::Create(identifier, {}).value();
@@ -324,5 +321,5 @@ TEST_F(GenericSkeletonTest, OfferServiceReturnsErrorIfBindingFails)
     EXPECT_EQ(result.error(), ComErrc::kBindingFailure);
 }
 
-} // namespace
-} // namespace score::mw::com::impl
+}  // namespace
+}  // namespace score::mw::com::impl

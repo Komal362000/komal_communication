@@ -154,7 +154,7 @@ TEST_F(SkeletonEventAllocateFixture, AllocateReturnsUniquePointersForMultipleCal
     {
         auto alloc_result = skeleton_event_->Allocate();
         ASSERT_TRUE(alloc_result.has_value()) << "Allocation " << i << " failed";
-        
+
         // Store the raw pointer to check for uniqueness
         raw_pointers.push_back(alloc_result.value().Get());
 

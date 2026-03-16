@@ -209,11 +209,11 @@ class Skeleton final : public SkeletonBinding
     /// \param sample_size The size of a single data sample.
     /// \param sample_alignment The alignment of the data sample.
     /// \return A pair containing the data storage pointer (void*) and the control composite.
-    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite>
-    CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
-                                          const SkeletonEventProperties& element_properties,
-                                          size_t sample_size,
-                                          size_t sample_alignment) noexcept;
+    std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite> CreateEventDataFromOpenedSharedMemory(
+        const ElementFqId element_fq_id,
+        const SkeletonEventProperties& element_properties,
+        size_t sample_size,
+        size_t sample_alignment) noexcept;
 
     class ShmResourceStorageSizes
     {

@@ -24,16 +24,12 @@ namespace score::mw::com::impl::mock_binding
 class GenericSkeletonEvent : public GenericSkeletonEventBinding
 {
   public:
-    //  Use explicit 'score::mw::com::impl::SampleAllocateePtr' to avoid ambiguity 
+    //  Use explicit 'score::mw::com::impl::SampleAllocateePtr' to avoid ambiguity
     // with the 'mock_binding::SampleAllocateePtr' alias (which is a unique_ptr).
-    
-    MOCK_METHOD(Result<score::Blank>, Send, 
-        (score::mw::com::impl::SampleAllocateePtr<void>), 
-        (noexcept, override));
 
-    MOCK_METHOD(Result<score::mw::com::impl::SampleAllocateePtr<void>>, Allocate, 
-        (), 
-        (noexcept, override));
+    MOCK_METHOD(Result<score::Blank>, Send, (score::mw::com::impl::SampleAllocateePtr<void>), (noexcept, override));
+
+    MOCK_METHOD(Result<score::mw::com::impl::SampleAllocateePtr<void>>, Allocate, (), (noexcept, override));
 
     MOCK_METHOD((std::pair<size_t, size_t>), GetSizeInfo, (), (const, noexcept, override));
     MOCK_METHOD(ResultBlank, PrepareOffer, (), (noexcept, override));
@@ -43,6 +39,6 @@ class GenericSkeletonEvent : public GenericSkeletonEventBinding
     MOCK_METHOD(std::size_t, GetMaxSize, (), (const, noexcept, override));
 };
 
-} // namespace score::mw::com::impl::mock_binding
+}  // namespace score::mw::com::impl::mock_binding
 
-#endif // SCORE_MW_COM_IMPL_BINDINGS_MOCK_BINDING_GENERIC_SKELETON_EVENT_H
+#endif  // SCORE_MW_COM_IMPL_BINDINGS_MOCK_BINDING_GENERIC_SKELETON_EVENT_H

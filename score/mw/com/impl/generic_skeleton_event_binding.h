@@ -18,8 +18,8 @@
 #include "score/mw/com/impl/plumbing/sample_allocatee_ptr.h"
 #include "score/result/result.h"
 
-#include <utility>
 #include <cstddef>
+#include <utility>
 
 namespace score::mw::com::impl
 {
@@ -34,6 +34,6 @@ class GenericSkeletonEventBinding : public SkeletonEventBindingBase
     virtual std::pair<size_t, size_t> GetSizeInfo() const noexcept = 0;
 };
 
-} // namespace score::mw::com::impl
+}  // namespace score::mw::com::impl
 
-#endif // SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_BINDING_H_
+#endif  // SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_BINDING_H_

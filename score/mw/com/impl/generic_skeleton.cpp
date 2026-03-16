@@ -16,12 +16,18 @@
 #include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory.h"
 #include "score/mw/com/impl/runtime.h"
 #include "score/mw/com/impl/plumbing/skeleton_binding_factory.h"
+#include "score/mw/com/impl/configuration/lola_service_type_deployment.h"
+#include "score/mw/com/impl/plumbing/generic_skeleton_event_binding_factory.h"
+#include "score/mw/com/impl/plumbing/skeleton_binding_factory.h"
+#include "score/mw/com/impl/runtime.h"
 #include "score/mw/com/impl/skeleton_binding.h"
 #include "score/mw/com/impl/configuration/lola_service_type_deployment.h"
 
 #include <score/overload.hpp>
+#include <score/overload.hpp>
 
 #include <cassert>
+#include <tuple>
 #include <utility>
 #include <tuple>
 
@@ -40,22 +46,20 @@ std::string_view GetEventName(const InstanceIdentifier& identifier, std::string_
             const auto it = deployment.events_.find(std::string{search_name});
             if (it != deployment.events_.end())
             {
-                return it->first; // Return the stable address of the Key from the Config Map
+                return it->first;  // Return the stable address of the Key from the Config Map
             }
             return {};
         },
         [](const score::cpp::blank&) noexcept -> std::string_view {
             return {};
-        }
-    );
+        });
 
     return std::visit(visitor, service_type_deployment.binding_info_);
 }
-} // namespace
+}  // namespace
 
-Result<GenericSkeleton> GenericSkeleton::Create(
-    const InstanceSpecifier& specifier,
-    const GenericSkeletonServiceElementInfo& in) noexcept
+Result<GenericSkeleton> GenericSkeleton::Create(const InstanceSpecifier& specifier,
+                                                const GenericSkeletonServiceElementInfo& in) noexcept
 {
     const auto instance_identifier_result = GetInstanceIdentifier(specifier);
 
@@ -65,16 +69,16 @@ Result<GenericSkeleton> GenericSkeleton::Create(
         return MakeUnexpected(ComErrc::kInstanceIDCouldNotBeResolved);
     }
 
-    return Create(instance_identifier_result.value(), in, mode);
+    return Create(instance_identifier_result.value(), in);
 }
 
-Result<GenericSkeleton> GenericSkeleton::Create(
-    const InstanceIdentifier& identifier,
-    const GenericSkeletonServiceElementInfo& in) noexcept
+Result<GenericSkeleton> GenericSkeleton::Create(const InstanceIdentifier& identifier,
+                                                const GenericSkeletonServiceElementInfo& in) noexcept
 {
     auto binding = SkeletonBindingFactory::Create(identifier);
     if (!binding)
     {
+
 
         score::mw::log::LogError("GenericSkeleton") << "Failed to create SkeletonBinding for the given identifier.";
         return MakeUnexpected(ComErrc::kBindingFailure);
@@ -96,13 +100,17 @@ Result<GenericSkeleton> GenericSkeleton::Create(
         // 1. Fetch the STABLE Name from Configuration
         std::string_view stable_name = GetEventName(identifier, info.name);
 
+
         if (stable_name.empty())
         {
-             score::mw::log::LogError("GenericSkeleton") << "Event name not found in configuration: " << info.name;
-             return MakeUnexpected(ComErrc::kBindingFailure);
+            score::mw::log::LogError("GenericSkeleton") << "Event name not found in configuration: " << info.name;
+            return MakeUnexpected(ComErrc::kBindingFailure);
         }
 
         auto event_binding_result = GenericSkeletonEventBindingFactory::Create(skeleton, info.name, info.data_type_meta_info);
+
+        auto event_binding_result =
+            GenericSkeletonEventBindingFactory::Create(skeleton, info.name, info.data_type_meta_info);
 
         if (!event_binding_result.has_value())
         {
@@ -118,6 +126,8 @@ Result<GenericSkeleton> GenericSkeleton::Create(
                 std::move(event_binding_result).value()
             )
         );
+            std::forward_as_tuple(stable_name),
+            std::forward_as_tuple(skeleton, stable_name, std::move(event_binding_result).value()));
 
         if (!emplace_result.second)
         {
@@ -144,11 +154,9 @@ void GenericSkeleton::StopOfferService() noexcept
     SkeletonBase::StopOfferService();
 }
 
-GenericSkeleton::GenericSkeleton(const InstanceIdentifier& identifier,
-                                 std::unique_ptr<SkeletonBinding> binding,
-                                 MethodCallProcessingMode mode)
-    : SkeletonBase(std::move(binding), identifier, mode)
+GenericSkeleton::GenericSkeleton(const InstanceIdentifier& identifier, std::unique_ptr<SkeletonBinding> binding)
+    : SkeletonBase(std::move(binding), identifier)
 {
 }
 
-} // namespace score::mw::com::impl
+}  // namespace score::mw::com::impl

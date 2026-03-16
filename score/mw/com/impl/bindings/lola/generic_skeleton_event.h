@@ -14,14 +14,12 @@
 #ifndef SCORE_MW_COM_IMPL_BINDINGS_LOLA_GENERIC_SKELETON_EVENT_H_
 #define SCORE_MW_COM_IMPL_BINDINGS_LOLA_GENERIC_SKELETON_EVENT_H_
 
-
-#include "score/mw/com/impl/generic_skeleton_event_binding.h"
 #include "score/mw/com/impl/bindings/lola/element_fq_id.h"
 #include "score/mw/com/impl/bindings/lola/event_data_storage.h"
+#include "score/mw/com/impl/bindings/lola/skeleton_event_common.h"
+#include "score/mw/com/impl/bindings/lola/skeleton_event_properties.h"
 #include "score/mw/com/impl/data_type_meta_info.h"
-#include "score/mw/com/impl/bindings/lola/skeleton_event_properties.h" 
-#include "score/mw/com/impl/bindings/lola/skeleton_event_common.h" 
-
+#include "score/mw/com/impl/generic_skeleton_event_binding.h"
 
 namespace score::mw::com::impl::lola
 {
@@ -33,20 +31,18 @@ class Skeleton;
 class GenericSkeletonEvent : public GenericSkeletonEventBinding
 {
   public:
-
     GenericSkeletonEvent(Skeleton& parent,
-                         const SkeletonEventProperties& event_properties, 
-                         const ElementFqId& event_fqn,                         
+                         const SkeletonEventProperties& event_properties,
+                         const ElementFqId& event_fqn,
                          const DataTypeMetaInfo& size_info,
                          impl::tracing::SkeletonEventTracingData tracing_data = {});
- 
+
     Result<score::Blank> Send(score::mw::com::impl::SampleAllocateePtr<void> sample) noexcept override;
 
     Result<score::mw::com::impl::SampleAllocateePtr<void>> Allocate() noexcept override;
 
     std::pair<size_t, size_t> GetSizeInfo() const noexcept override;
 
-    
     ResultBlank PrepareOffer() noexcept override;
     void PrepareStopOffer() noexcept override;
     BindingType GetBindingType() const noexcept override;
@@ -67,11 +63,10 @@ class GenericSkeletonEvent : public GenericSkeletonEventBinding
     EventSlotStatus::EventTimeStamp current_timestamp_{1U};
     score::memory::shared::OffsetPtr<void> data_storage_{nullptr};
     bool qm_disconnect_{false};
-    
-    SkeletonEventCommon event_shared_impl_; 
-    
+
+    SkeletonEventCommon event_shared_impl_;
 };
 
-} // namespace score::mw::com::impl::lola
+}  // namespace score::mw::com::impl::lola
 
-#endif // SCORE_MW_COM_IMPL_BINDINGS_LOLA_GENERIC_SKELETON_EVENT_H_
+#endif  // SCORE_MW_COM_IMPL_BINDINGS_LOLA_GENERIC_SKELETON_EVENT_H_

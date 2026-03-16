@@ -44,8 +44,8 @@ cc_library(
     ],
     deps = [
         ":sample_ptr",
-        "//score/mw/com/impl:generic_skeleton_event_binding",
         "//score/mw/com/impl:generic_proxy_event_binding",
+        "//score/mw/com/impl:generic_skeleton_event_binding",
         "//score/mw/com/impl:proxy_binding",
         "//score/mw/com/impl:proxy_event_binding",
         "//score/mw/com/impl:skeleton_binding",
@@ -82,7 +82,6 @@ cc_library(
         "@score_baselibs//score/language/futurecpp",
     ],
 )
-
 
 cc_library(
     name = "sample_allocatee_ptr",

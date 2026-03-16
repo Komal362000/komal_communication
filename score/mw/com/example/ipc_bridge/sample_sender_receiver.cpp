@@ -26,7 +26,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
-#include <vector> 
+#include <vector>
 
 using namespace std::chrono_literals;
 
@@ -284,7 +284,8 @@ Result<SampleAllocateePtr<void>> PrepareMapLaneSample(GenericSkeletonEvent& even
     typed_sample->x = static_cast<std::uint32_t>(cycle);
 
     std::cout << ToString("Sending sample: ", typed_sample->x, "\n");
-    for (MapApiLaneData& lane : typed_sample->lanes)    {
+    for (MapApiLaneData& lane : typed_sample->lanes)
+    {
         for (LaneIdType& successor : lane.successor_lanes)
         {
             successor = std::uniform_int_distribution<std::size_t>()(rng);
@@ -477,7 +478,7 @@ int EventSenderReceiver::RunAsSkeleton(const score::mw::com::InstanceSpecifier& 
             {
                 std::cerr << "Failed to send sample: " << send_result.error() << "\n";
                 return EXIT_FAILURE;
-            }            
+            }
             event_published_ = true;
         }
         std::this_thread::sleep_for(cycle_time);
@@ -504,7 +505,7 @@ int EventSenderReceiver::RunAsGenericSkeleton(const score::mw::com::InstanceSpec
     create_params.events = events_vec;
 
     auto create_result = GenericSkeleton::Create(instance_specifier, create_params);
-    
+
     if (!create_result.has_value())
     {
         std::cerr << "Unable to construct skeleton: " << create_result.error() << ", bailing!\n";
@@ -514,8 +515,9 @@ int EventSenderReceiver::RunAsGenericSkeleton(const score::mw::com::InstanceSpec
 
     // Retrieve event using its name
     auto event_it = skeleton.GetEvents().find(event_name);
-    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_it != skeleton.GetEvents().cend(), "Event not found in GenericSkeleton");
-    
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_it != skeleton.GetEvents().cend(),
+                                                "Event not found in GenericSkeleton");
+
     auto& event = const_cast<GenericSkeletonEvent&>(event_it->second);
 
     const auto offer_result = skeleton.OfferService();

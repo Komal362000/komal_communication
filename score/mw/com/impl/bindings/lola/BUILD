@@ -204,7 +204,6 @@ cc_library(
     ],
 )
 
-
 cc_library(
     name = "shared_data_structures",
     srcs = [
@@ -235,13 +234,13 @@ cc_library(
 cc_library(
     name = "generic_skeleton_event",
     srcs = [
-            "generic_skeleton_event.cpp",
-            "skeleton_event_common.cpp",
-        ],
+        "generic_skeleton_event.cpp",
+        "skeleton_event_common.cpp",
+    ],
     hdrs = [
-            "generic_skeleton_event.h",
-            "skeleton_event_common.h",
-        ],
+        "generic_skeleton_event.h",
+        "skeleton_event_common.h",
+    ],
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
     visibility = [
@@ -250,30 +249,30 @@ cc_library(
     deps = [
         ":event",
         ":skeleton",
+        ":type_erased_sample_ptrs_guard",
         "//score/mw/com/impl:error",
         "//score/mw/com/impl:generic_skeleton_event_binding",
         "//score/mw/com/impl/tracing:skeleton_event_tracing",
-        ":type_erased_sample_ptrs_guard",
     ],
 )
 
 cc_library(
     name = "skeleton",
     srcs = [
+        "generic_skeleton_event.cpp",
         "skeleton.cpp",
         "skeleton_event.cpp",
         "skeleton_event_common.cpp",
         "skeleton_event_properties.cpp",
         "skeleton_method.cpp",
-        "generic_skeleton_event.cpp",
     ],
     hdrs = [
+        "generic_skeleton_event.h",
         "skeleton.h",
         "skeleton_event.h",
         "skeleton_event_common.h",
         "skeleton_event_properties.h",
         "skeleton_method.h",
-        "generic_skeleton_event.h",
     ],
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
@@ -292,6 +291,8 @@ cc_library(
         ":skeleton_instance_identifier",
         ":transaction_log_registration_guard",
         ":type_erased_sample_ptrs_guard",
+        "//score/mw/com/impl:error",
+        "//score/mw/com/impl:generic_skeleton_event_binding",
         "//score/mw/com/impl:instance_identifier",
         "//score/mw/com/impl:runtime",
         "//score/mw/com/impl:skeleton_binding",
@@ -304,8 +305,6 @@ cc_library(
         "//score/mw/com/impl/plumbing:sample_allocatee_ptr",
         "//score/mw/com/impl/tracing:skeleton_event_tracing",
         "//score/mw/com/impl/util:arithmetic_utils",
-        "//score/mw/com/impl:generic_skeleton_event_binding",
-        "//score/mw/com/impl:error",
         "@score_baselibs//score/filesystem",
         "@score_baselibs//score/language/futurecpp",
         "@score_baselibs//score/language/safecpp/safe_math",

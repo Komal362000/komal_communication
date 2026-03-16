@@ -24,7 +24,7 @@ using CustomDeleter = score::cpp::callback<void(SampleType*)>;
 
 /// \brief SampleAllocateePtr used for the mock binding.
 ///
-/// The SampleAllocateePtr is an alias for a unique_ptr with a custom deleter. 
+/// The SampleAllocateePtr is an alias for a unique_ptr with a custom deleter.
 /// This matches the logic used in SamplePtr to support 'void' types safely.
 ///
 /// @tparam SampleType The data type managed by this pointer.

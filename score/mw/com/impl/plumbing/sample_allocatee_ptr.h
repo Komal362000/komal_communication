@@ -22,9 +22,9 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <type_traits>
 #include <utility>
 #include <variant>
-#include <type_traits> 
 
 namespace score::mw::com::impl
 {
@@ -100,7 +100,7 @@ class SampleAllocateePtr
     // [CRITICAL UPDATE] Declarations MUST be templates to support SFINAE
     // This allows disabling these operators when SampleType is void.
     // -------------------------------------------------------------------------
-    
+
     /// \brief operator* - Enabled via SFINAE only if SampleType is NOT void
     /// \brief operator* and operator-> provide access to the object owned by *this. If no object is hold, will
     /// terminate.
@@ -143,10 +143,11 @@ class SampleAllocateePtr
     template <typename T>
     // coverity[autosar_cpp14_a11_3_1_violation]
     friend class SampleAllocateePtrMutableView;
-    
+
     // We don't use the pimpl idiom because it would require dynamic memory allocation (that we want to avoid)
     // Stores either the LoLa pointer or the Mock Binding pointer (which handles void safely)
-    std::variant<score::cpp::blank, lola::SampleAllocateePtr<SampleType>, mock_binding::SampleAllocateePtr<SampleType>> internal_;
+    std::variant<score::cpp::blank, lola::SampleAllocateePtr<SampleType>, mock_binding::SampleAllocateePtr<SampleType>>
+        internal_;
 };
 
 template <typename SampleType>
@@ -185,7 +186,7 @@ void SampleAllocateePtr<SampleType>::reset() noexcept
         },
         // coverity[autosar_cpp14_a7_1_7_violation]
         [](mock_binding::SampleAllocateePtr<SampleType>& internal_ptr) noexcept -> void {
-            internal_ptr.reset(nullptr); 
+            internal_ptr.reset(nullptr);
         },
         // coverity[autosar_cpp14_a7_1_7_violation]
         [](const score::cpp::blank&) noexcept -> void {});
@@ -367,8 +368,9 @@ class SampleAllocateePtrView
         return std::get_if<T>(&ptr_.internal_);
     }
 
-    const std::variant<score::cpp::blank, lola::SampleAllocateePtr<SampleType>, mock_binding::SampleAllocateePtr<SampleType>>&
-    GetUnderlyingVariant() const noexcept
+    const std::
+        variant<score::cpp::blank, lola::SampleAllocateePtr<SampleType>, mock_binding::SampleAllocateePtr<SampleType>>&
+        GetUnderlyingVariant() const noexcept
     {
         return ptr_.internal_;
     }

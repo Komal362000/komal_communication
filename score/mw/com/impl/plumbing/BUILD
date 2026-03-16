@@ -449,10 +449,10 @@ cc_library(
     implementation_deps = [
         "skeleton_binding_factory_impl",
     ],
-     visibility = [
+    tags = ["FFI"],
+    visibility = [
         "//score/mw/com/impl:__subpackages__",
     ],
-    tags = ["FFI"],
     deps = [
         ":i_skeleton_binding_factory",
         "@score_baselibs//score/language/futurecpp",
@@ -596,21 +596,23 @@ cc_library(
     hdrs = ["generic_skeleton_event_binding_factory_impl.h"],
     features = COMPILER_WARNING_FEATURES,
     implementation_deps = ["//score/mw/com/impl/bindings/lola"],
-    tags = ["FFI"], # Increased visibility as it's now in score::mw::com::impl namespace
+    tags = ["FFI"],  # Increased visibility as it's now in score::mw::com::impl namespace
     visibility = [
         "//score/mw/com/impl:__subpackages__",
     ],
     deps = [
-        "//score/mw/com/impl:i_generic_skeleton_event_binding_factory",
         ":skeleton_service_element_binding_factory_impl",
+        "//score/mw/com/impl:i_generic_skeleton_event_binding_factory",
     ],
 )
 
 cc_library(
     name = "generic_skeleton_event_binding_factory",
     srcs = ["generic_skeleton_event_binding_factory.cpp"],
-    hdrs = ["generic_skeleton_event_binding_factory.h",
-            "skeleton_service_element_binding_factory_impl.h"],
+    hdrs = [
+        "generic_skeleton_event_binding_factory.h",
+        "skeleton_service_element_binding_factory_impl.h",
+    ],
     features = COMPILER_WARNING_FEATURES,
     implementation_deps = [
         ":generic_skeleton_event_binding_factory_impl",
@@ -619,7 +621,8 @@ cc_library(
     visibility = [
         "//score/mw/com/impl:__subpackages__",
     ],
-      deps = [ # Removed unnecessary dependency
+    deps = [
+        # Removed unnecessary dependency
         "//score/mw/com/impl:i_generic_skeleton_event_binding_factory",
     ],
 )
@@ -633,11 +636,12 @@ cc_library(
     visibility = [
         "//visibility:public",  # platform_only
     ],
-     deps = [
+    deps = [
         "//score/mw/com/impl:i_generic_skeleton_event_binding_factory",
         "@googletest//:gtest",
     ],
 )
+
 cc_library(
     name = "runtime",
     srcs = [
@@ -718,9 +722,10 @@ cc_library(
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
     visibility = ["//score/mw/com/impl:__subpackages__"],
-    deps = ["//score/mw/com/impl/bindings/lola:event",
+    deps = [
+        "//score/mw/com/impl/bindings/lola:event",
         "//score/mw/com/impl/bindings/mock_binding:sample_allocatee_ptr",
-        ],
+    ],
 )
 
 cc_library(

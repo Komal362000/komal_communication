@@ -13,12 +13,12 @@
 #ifndef SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_H_
 #define SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_H_
 
-#include "score/mw/com/impl/skeleton_event_base.h"
+#include "score/mw/com/impl/data_type_meta_info.h"
 #include "score/mw/com/impl/plumbing/sample_allocatee_ptr.h"
+#include "score/mw/com/impl/skeleton_event_base.h"
 #include "score/result/result.h"
-#include "score/mw/com/impl/data_type_meta_info.h" 
 
-#include <string> 
+#include <string>
 
 namespace score::mw::com::impl
 {
@@ -39,6 +39,6 @@ class GenericSkeletonEvent : public SkeletonEventBase
     DataTypeMetaInfo GetSizeInfo() const noexcept;
 };
 
-} // namespace score::mw::com::impl
+}  // namespace score::mw::com::impl
 
-#endif // SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_H_
+#endif  // SCORE_MW_COM_IMPL_GENERIC_SKELETON_EVENT_H_

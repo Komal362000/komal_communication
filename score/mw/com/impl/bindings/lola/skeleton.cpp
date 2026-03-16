@@ -13,6 +13,7 @@
 #include "score/mw/com/impl/bindings/lola/skeleton.h"
 
 #include "score/memory/shared/managed_memory_resource.h"
+#include "score/mw/com/impl/bindings/lola/generic_skeleton_event.h"
 #include "score/mw/com/impl/bindings/lola/i_shm_path_builder.h"
 #include "score/mw/com/impl/bindings/lola/messaging/i_message_passing_service.h"
 #include "score/mw/com/impl/bindings/lola/methods/proxy_method_instance_identifier.h"
@@ -28,7 +29,6 @@
 #include "score/mw/com/impl/configuration/lola_event_instance_deployment.h"
 #include "score/mw/com/impl/configuration/lola_method_id.h"
 #include "score/mw/com/impl/configuration/lola_service_instance_deployment.h"
-#include "score/mw/com/impl/bindings/lola/generic_skeleton_event.h"
 #include "score/mw/com/impl/configuration/lola_service_type_deployment.h"
 #include "score/mw/com/impl/configuration/quality_type.h"
 #include "score/mw/com/impl/runtime.h"
@@ -261,8 +261,6 @@ std::unique_ptr<Skeleton> Skeleton::Create(const InstanceIdentifier& identifier,
         score::mw::log::LogError("lola") << "Could not create or open service instance existence marker file.";
         return nullptr;
     }
-
-    }
     auto service_instance_existence_mutex_and_lock =
         std::make_unique<memory::shared::FlockMutexAndLock<memory::shared::ExclusiveFlockMutex>>(
             *service_instance_existence_marker_file);
@@ -272,8 +270,6 @@ std::unique_ptr<Skeleton> Skeleton::Create(const InstanceIdentifier& identifier,
             << "Flock try_lock failed: Another Skeleton could have already flocked the marker file and is "
                "actively offering the same service instance.";
         return nullptr;
-    }
-
     }
     const auto& lola_service_type_deployment = GetLolaServiceTypeDeployment(identifier);
     // Since we were able to flock the existence marker file, it means that either we created it or the skeleton that
@@ -1055,27 +1051,29 @@ void Skeleton::InitializeSharedMemoryForControl(
     control = memory->construct<ServiceDataControl>(*memory);
 }
 
-EventDataControlComposite Skeleton::CreateEventControlComposite(const ElementFqId element_fq_id,
-                                                                const SkeletonEventProperties& element_properties) noexcept
+EventDataControlComposite Skeleton::CreateEventControlComposite(
+    const ElementFqId element_fq_id,
+    const SkeletonEventProperties& element_properties) noexcept
 {
     auto control_qm = control_qm_->event_controls_.emplace(std::piecewise_construct,
                                                            std::forward_as_tuple(element_fq_id),
                                                            std::forward_as_tuple(element_properties.number_of_slots,
-                                                                                element_properties.max_subscribers,
-                                                                                element_properties.enforce_max_samples,
-                                                                                *control_qm_resource_));
-    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(control_qm.second, "Couldn't register/emplace event-meta-info in data-section.");
+                                                                                 element_properties.max_subscribers,
+                                                                                 element_properties.enforce_max_samples,
+                                                                                 *control_qm_resource_));
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(control_qm.second,
+                                                "Couldn't register/emplace event-meta-info in data-section.");
 
     EventDataControl* control_asil_result{nullptr};
     if (control_asil_resource_ != nullptr)
     {
-        auto iterator = control_asil_b_->event_controls_.emplace(
-            std::piecewise_construct,
-            std::forward_as_tuple(element_fq_id),
-            std::forward_as_tuple(element_properties.number_of_slots,
-            element_properties.max_subscribers,
-            element_properties.enforce_max_samples,
-            *control_asil_resource_));
+        auto iterator =
+            control_asil_b_->event_controls_.emplace(std::piecewise_construct,
+                                                     std::forward_as_tuple(element_fq_id),
+                                                     std::forward_as_tuple(element_properties.number_of_slots,
+                                                                           element_properties.max_subscribers,
+                                                                           element_properties.enforce_max_samples,
+                                                                           *control_asil_resource_));
 
         // Suppress "AUTOSAR C++14 M7-5-1" rule. This rule declares:
         // A function shall not return a reference or a pointer to an automatic variable (including parameters), defined

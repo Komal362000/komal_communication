@@ -11,18 +11,19 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 #include "score/mw/com/impl/bindings/lola/skeleton_event_common.h"
-#include "score/mw/com/impl/bindings/lola/i_runtime.h" // For GetBindingRuntime
-#include "score/mw/com/impl/bindings/lola/messaging/i_message_passing_service.h" // For RegisterEventNotificationExistenceChangedCallback
+#include "score/mw/com/impl/bindings/lola/i_runtime.h"                            // For GetBindingRuntime
+#include "score/mw/com/impl/bindings/lola/messaging/i_message_passing_service.h"  // For RegisterEventNotificationExistenceChangedCallback
 #include "score/mw/com/impl/bindings/lola/skeleton.h"
 
 namespace score::mw::com::impl::lola
 {
 
-SkeletonEventCommon::SkeletonEventCommon(Skeleton& parent,
-                                         const ElementFqId& event_fqn,
-                                         score::cpp::optional<EventDataControlComposite>& event_data_control_composite_ref,
-                                         EventSlotStatus::EventTimeStamp& current_timestamp_ref,
-                                         impl::tracing::SkeletonEventTracingData tracing_data) noexcept
+SkeletonEventCommon::SkeletonEventCommon(
+    Skeleton& parent,
+    const ElementFqId& event_fqn,
+    score::cpp::optional<EventDataControlComposite>& event_data_control_composite_ref,
+    EventSlotStatus::EventTimeStamp& current_timestamp_ref,
+    impl::tracing::SkeletonEventTracingData tracing_data) noexcept
     : parent_{parent},
       event_fqn_{event_fqn},
       event_data_control_composite_ref_{event_data_control_composite_ref},
@@ -75,7 +76,6 @@ void SkeletonEventCommon::PrepareOfferCommon() noexcept
                     SetAsilBNotificationsRegistered(has_handlers);
                 });
     }
-
 }
 
 void SkeletonEventCommon::PrepareStopOfferCommon() noexcept
@@ -101,7 +101,8 @@ void SkeletonEventCommon::PrepareStopOfferCommon() noexcept
 
 void SkeletonEventCommon::EmplaceTransactionLogRegistrationGuard()
 {
-    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_data_control_composite_ref_.has_value(), "EventDataControlComposite must be initialized.");
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_data_control_composite_ref_.has_value(),
+                                                "EventDataControlComposite must be initialized.");
     score::cpp::ignore = transaction_log_registration_guard_.emplace(
         TransactionLogRegistrationGuard::Create(event_data_control_composite_ref_.value().GetQmEventDataControl()));
 }
@@ -113,7 +114,8 @@ void SkeletonEventCommon::EmplaceTypeErasedSamplePtrsGuard()
 
 void SkeletonEventCommon::UpdateCurrentTimestamp()
 {
-    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_data_control_composite_ref_.has_value(), "EventDataControlComposite must be initialized.");
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_data_control_composite_ref_.has_value(),
+                                                "EventDataControlComposite must be initialized.");
     current_timestamp_ref_ = event_data_control_composite_ref_.value().GetLatestTimestamp();
 }
 
@@ -138,14 +140,14 @@ void SkeletonEventCommon::ResetGuards() noexcept
 
 bool SkeletonEventCommon::IsQmNotificationsRegistered() const noexcept
 {
-    
+
     return qm_event_update_notifications_registered_.load();
 }
 
 bool SkeletonEventCommon::IsAsilBNotificationsRegistered() const noexcept
 {
- 
+
     return asil_b_event_update_notifications_registered_.load();
 }
 
-} // namespace score::mw::com::impl::lola
+}  // namespace score::mw::com::impl::lola
