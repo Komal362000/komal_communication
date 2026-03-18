@@ -150,8 +150,8 @@ class SkeletonTrait
     template <typename SampleType>
     using Event = SkeletonEvent<SampleType>;
 
-    template <typename SampleType>
-    using Field = SkeletonField<SampleType>;
+    template <typename SampleType, bool EnableSet = false, bool EnableNotifier = false>
+    using Field = SkeletonField<SampleType, EnableSet, EnableNotifier>;
 
     template <typename MethodSignature>
     using Method = SkeletonMethod<MethodSignature>;
@@ -216,9 +216,8 @@ class SkeletonWrapperClass : public Interface<Trait>
         SkeletonWrapperClass skeleton_wrapper(instance_identifier, std::move(skeleton_binding));
         if (!skeleton_wrapper.AreBindingsValid())
         {
-            ::score::mw::log::LogError("lola")
-                << "Could not create SkeletonWrapperClass as Skeleton binding or service "
-                   "element bindings could not be created.";
+            ::score::mw::log::LogError("lola") << "Could not create SkeletonWrapperClass as Skeleton binding or service "
+                                                "element bindings could not be created.";
             return MakeUnexpected(ComErrc::kBindingFailure);
         }
 
@@ -269,10 +268,8 @@ class SkeletonWrapperClass : public Interface<Trait>
                                       std::unordered_map<InstanceIdentifier, std::queue<Result<SkeletonWrapperClass>>>
                                           instance_identifier_creation_results)
     {
-        score::cpp::ignore =
-            instance_specifier_creation_results_.emplace(std::move(instance_specifier_creation_results));
-        score::cpp::ignore =
-            instance_identifier_creation_results_.emplace(std::move(instance_identifier_creation_results));
+        score::cpp::ignore = instance_specifier_creation_results_.emplace(std::move(instance_specifier_creation_results));
+        score::cpp::ignore = instance_identifier_creation_results_.emplace(std::move(instance_identifier_creation_results));
     }
 
     static void ClearCreationResults()
