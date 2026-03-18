@@ -195,20 +195,19 @@ where
     fn load_config(&mut self, config: &Path) -> &mut Self;
 }
 
-/// Communication data type requirements trait.
-/// Requires the data type to be relocatable between address spaces and sendable across threads.
-/// Also requires the data type to implement Debug for logging and debugging purposes.
-/// 'static' lifetime ensures the data type does not contain non-static references.
+/// Defines the necessary properties for data types that can be communicated over the COM API.
+/// This trait ensures that data types are suitable for IPC communication by enforcing properties
+/// such as being relocatable. The Reloc trait provides Send + Unpin + 'static bounds which are necessary for safe cross-address-space usage.
 /// # Important
 /// Users must NOT implement the `CommData` trait manually. Always use the derive macros instead.
 /// Since `Reloc` is a supertrait of `CommData`, both must be derived explicitly:
-/// `#[derive(Reloc, CommData)]` on the struct definition.
+/// `#[derive(Reloc, CommData)]` on type definitions.
 /// This is to ensure that all necessary trait bounds and metadata are correctly applied to the communication data types.
 /// Also if user wants to specify a custom ID for the communication data type,
-/// they can use the `#[comm_data(id = "CustomID")]` attribute on the struct definition.
+/// they can use the `#[comm_data(id = "CustomID")]` attribute on the type definition.
 /// The custom ID must be unique across all communication data types to avoid conflicts in the system.
-/// If no custom ID is provided, the struct name will be used as the default ID with module path as prefix to ensure uniqueness.
-pub trait CommData: Reloc + Send + Debug + 'static {
+/// If no custom ID is provided, the type name will be used as the default ID with module path as prefix to ensure uniqueness.
+pub trait CommData: Reloc + Debug {
     const ID: &'static str;
 }
 

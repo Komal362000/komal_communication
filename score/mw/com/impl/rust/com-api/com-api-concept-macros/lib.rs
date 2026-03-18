@@ -22,9 +22,7 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 ///
 /// # Validation performed by this macro
 ///
-/// This macro **only** validates the optional `#[comm_data(id = "…")]` attribute. It does
-/// **not** check `#[repr(C)]`, field relocatability, or enum layout — those invariants are
-/// already enforced by `#[derive(Reloc)]`, which must be placed before this macro.
+/// This macro validates the optional `#[comm_data(id = "…")]` attribute.
 ///
 /// # Important
 /// Users must NOT implement the `CommData` trait manually. Always use the derive macros instead.
@@ -36,12 +34,12 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 /// If no custom ID is provided, a fully qualified type name is used as the ID.
 /// Example usage:
 /// ```ignore
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// pub struct MyData {
 ///    value: u32,
@@ -49,12 +47,12 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 /// ```
 /// with custom ID:
 /// ``` ignore
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///   const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "CustomID_MyData")]
 /// pub struct MyData {
@@ -66,6 +64,11 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, Generics, M
 pub fn derive_comm_data(input: TokenStream) -> TokenStream {
     let input_args = parse_macro_input!(input as DeriveInput);
     let ident_name = &input_args.ident;
+
+    // Reject #[comm_data(...)] placed on fields, the attribute is only valid at the type level
+    if let Err(e) = check_no_comm_data_on_fields(&input_args.data) {
+        return e.to_compile_error().into();
+    }
 
     //Add where clause if there are generics
     let generics = input_args.generics.clone();
@@ -150,6 +153,68 @@ fn extract_id_from_attribute(attrs: &[syn::Attribute]) -> Result<Option<String>,
         return Ok(Some(id_value));
     }
     Ok(None)
+}
+
+/// Check that no field carries a `#[comm_data(...)]` attribute.
+/// The attribute is only valid at the type level, not on individual fields.
+fn check_no_comm_data_on_fields(data: &Data) -> Result<(), syn::Error> {
+    match data {
+        Data::Struct(s) => check_attrs(&s.fields),
+        Data::Enum(e) => check_enum_variants(&e.variants),
+        Data::Union(_) => Err(syn::Error::new_spanned(
+            "The #[comm_data] macro does not support unions",
+            "use structs or C-like enums instead",
+        )),
+    }
+}
+
+/// Check enum variants: check that no variant carries the #[comm_data(...)] attribute
+fn check_enum_variants(
+    variants: &syn::punctuated::Punctuated<syn::Variant, syn::token::Comma>,
+) -> Result<(), syn::Error> {
+    for variant in variants {
+        // Find #[comm_data(...)] attribute on the variant
+        if let Some(attr) = variant
+            .attrs
+            .iter()
+            .find(|a| a.path().is_ident("comm_data"))
+        {
+            return Err(syn::Error::new_spanned(
+                attr,
+                "#[comm_data(id = \"...\")] must be placed on the type, not on an enum variant",
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Check attributes on a field collection
+fn check_attrs(fields: &Fields) -> Result<(), syn::Error> {
+    match fields {
+        Fields::Named(f) => {
+            for field in &f.named {
+                if let Some(attr) = field.attrs.iter().find(|a| a.path().is_ident("comm_data")) {
+                    return Err(syn::Error::new_spanned(
+                        attr,
+                        "#[comm_data(id = \"...\")] must be placed on the type, not on a field",
+                    ));
+                }
+            }
+            Ok(())
+        }
+        Fields::Unnamed(f) => {
+            for field in &f.unnamed {
+                if let Some(attr) = field.attrs.iter().find(|a| a.path().is_ident("comm_data")) {
+                    return Err(syn::Error::new_spanned(
+                        attr,
+                        "#[comm_data(id = \"...\")] must be placed on the type, not on a field",
+                    ));
+                }
+            }
+            Ok(())
+        }
+        Fields::Unit => Ok(()), // Unit variants have no fields, nothing to check
+    }
 }
 
 /// Derive macro for the `Reloc` marker trait.
@@ -270,7 +335,7 @@ fn collect_field_types<'a>(data: &'a Data) -> Result<Vec<&'a Type>, ()> {
 // Use doctest to test failed compilations and successful ones
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// use com_api_concept_macros::Reloc;
 ///
 /// #[derive(Reloc)]
@@ -285,7 +350,7 @@ fn collect_field_types<'a>(data: &'a Data) -> Result<Vec<&'a Type>, ()> {
 fn reloc_works_on_generic_types() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// use com_api_concept_macros::Reloc;
 ///
 /// #[derive(Reloc)]
@@ -300,7 +365,7 @@ fn reloc_works_on_generic_types() {}
 fn reloc_works_on_c_like_enums() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// use com_api_concept_macros::Reloc;
 ///
 /// #[derive(Reloc)]
@@ -311,7 +376,7 @@ fn reloc_works_on_c_like_enums() {}
 fn reloc_works_on_unit() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// unsafe impl Reloc for u32{}
 /// unsafe impl Reloc for u64{}
 ///
@@ -333,7 +398,7 @@ fn reloc_works_on_unit() {}
 fn reloc_works_on_structs() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// unsafe impl Reloc for u32{}
 /// unsafe impl Reloc for u64{}
 ///
@@ -353,7 +418,7 @@ fn reloc_works_on_tuples() {}
 // Failure cases
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// use com_api_concept_macros::Reloc;
 ///
 /// #[derive(Reloc)]
@@ -368,7 +433,7 @@ fn reloc_works_on_tuples() {}
 fn reloc_fail_on_non_c_like_enums() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// unsafe impl Reloc for u32{}
 ///
 /// use com_api_concept_macros::Reloc;
@@ -389,7 +454,7 @@ fn reloc_fail_on_non_c_like_enums() {}
 fn reloc_fails_if_member_is_not_reloc_on_struct() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// use com_api_concept_macros::Reloc;
 ///
 /// #[derive(Reloc)]
@@ -404,12 +469,12 @@ fn reloc_fails_if_member_is_not_reloc_on_struct() {}
 fn reloc_fails_on_generic_types_that_do_not_impl_reloc() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// pub struct MyData {
 ///     value: u32,
 /// }
@@ -419,12 +484,12 @@ fn reloc_fails_on_generic_types_that_do_not_impl_reloc() {}
 fn comm_data_fails_without_repr_c() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///   const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// pub enum MyEnum {
 ///   A,
@@ -437,12 +502,12 @@ fn comm_data_fails_without_repr_c() {}
 fn comm_data_fails_on_non_c_like_enum() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///  const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// pub enum MyEnum {
 ///  A,
@@ -455,13 +520,13 @@ fn comm_data_fails_on_non_c_like_enum() {}
 fn comm_data_works_on_c_like_enum() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// unsafe impl Reloc for u32 {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub trait CommData: Reloc {
 /// const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// pub struct MyStruct {
 ///    value: u32,
@@ -474,13 +539,13 @@ fn comm_data_works_on_c_like_enum() {}
 fn comm_data_works_on_struct() {}
 
 /// ```
-/// pub unsafe trait Reloc {}
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
 /// unsafe impl Reloc for u32 {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub trait CommData: Reloc {
 /// const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "CustomID_MyStruct")]
 /// pub struct MyStruct {
@@ -493,12 +558,12 @@ fn comm_data_works_on_struct() {}
 fn comm_data_works_on_struct_with_custom_id() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(wrong = "value")]
 /// pub struct MyData {
@@ -510,12 +575,12 @@ fn comm_data_works_on_struct_with_custom_id() {}
 fn comm_data_fails_with_invalid_attribute_key() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = 123)]
 /// pub struct MyData {
@@ -527,12 +592,12 @@ fn comm_data_fails_with_invalid_attribute_key() {}
 fn comm_data_fails_with_non_string_id() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data]
 /// pub struct MyData {
@@ -544,12 +609,12 @@ fn comm_data_fails_with_non_string_id() {}
 fn comm_data_fails_with_malformed_attribute() {}
 
 /// ```compile_fail
-/// pub unsafe trait Reloc {}
-/// pub trait CommData: Reloc + Send + 'static {
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
 ///    const ID: &'static str;
 /// }
 /// use com_api_concept_macros::{CommData, Reloc};
-/// #[derive(Reloc, CommData)]
+/// #[derive(Debug, Reloc, CommData)]
 /// #[repr(C)]
 /// #[comm_data(id = "")]
 /// pub struct MyData {
@@ -559,3 +624,39 @@ fn comm_data_fails_with_malformed_attribute() {}
 /// This will fail because id cannot be an empty string
 #[cfg(doctest)]
 fn comm_data_fails_with_empty_string_id() {}
+
+/// ```compile_fail
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
+///    const ID: &'static str;
+/// }
+/// /// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Debug, Reloc, CommData)]
+/// #[repr(C)]
+/// pub struct MyData {
+/// #[comm_data(id = "mydata")]
+///     value: u32,
+/// }
+/// ```
+/// This will fail because #[comm_data(...)] is not allowed on fields, only on the type itself
+#[cfg(doctest)]
+fn comm_data_fails_with_attribute_on_field() {}
+
+/// ``` compile_fail
+/// pub unsafe trait Reloc: Send + Unpin + 'static {}
+/// pub trait CommData: Reloc {
+///  const ID: &'static str;
+/// }
+/// use com_api_concept_macros::{CommData, Reloc};
+/// #[derive(Debug, Reloc, CommData)]
+/// #[repr(C)]
+/// pub enum MyEnum {
+/// #[comm_data(id = "CustomID_VariantA")]
+///  A,
+///  B,
+///  C,
+/// }
+/// ```
+/// This will fail because #[comm_data(...)] is not allowed on enum variants, only on the enum type itself
+#[cfg(doctest)]
+fn comm_data_fails_with_attribute_on_enum_variant() {}
