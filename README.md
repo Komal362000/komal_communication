@@ -78,6 +78,7 @@ Camera App ──► [Video Frame] ──┬──► Display App
 - **Build System**: Bazel 6.0+
 - **Operating System**: Linux (Ubuntu 24.04+) or QNX
 - **Dependencies**: GoogleTest, Google Benchmark
+- **Virtualization**: Docker with user permissions or rootless mode
 
 ### DevContainer Setup(Recommended)
 
