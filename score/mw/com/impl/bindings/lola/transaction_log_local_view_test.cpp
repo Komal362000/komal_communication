@@ -61,6 +61,38 @@ class TransactionLogFixture : public ::testing::Test
     StrictMock<MockFunction<void(TransactionLog::MaxSampleCountType)>> unsubscribe_callback_{};
 };
 
+TEST_F(TransactionLogFixture, SubscriptionTransactionUpdatesPointedToTransactionLog)
+{
+    // Given a TransactionLogLocalView pointing to a valid TransactionLog with no recorded transactions
+    ASSERT_FALSE(transaction_log_.subscribe_transactions_.GetTransactionBegin());
+    ASSERT_FALSE(transaction_log_.subscribe_transactions_.GetTransactionEnd());
+
+    // When calling SubscribeTransactionBegin on the TransactionLogLocalView
+    unit_.SubscribeTransactionBegin(kSubscriptionMaxSampleCount);
+
+    // Then the underlying TransactionLog being pointed to by the TransactionLogLocalView should be updated.
+    EXPECT_TRUE(transaction_log_.subscribe_transactions_.GetTransactionBegin());
+    EXPECT_FALSE(transaction_log_.subscribe_transactions_.GetTransactionEnd());
+}
+
+TEST_F(TransactionLogFixture, ReferenceTransactionUpdatesPointedToTransactionLog)
+{
+    // Given a TransactionLogLocalView pointing to a valid TransactionLog
+
+    // and given a slot in the TransactionLog with no recorded transactions
+    constexpr std::size_t slot_index{0U};
+    const auto& slot = transaction_log_.reference_count_slots_.at(slot_index);
+    ASSERT_FALSE(slot.GetTransactionBegin());
+    ASSERT_FALSE(slot.GetTransactionEnd());
+
+    // When calling ReferenceTransactionBegin on the first slot in the TransactionLogLocalView
+    unit_.ReferenceTransactionBegin(slot_index);
+
+    // Then the underlying TransactionLog being pointed to by the TransactionLogLocalView should be updated.
+    EXPECT_TRUE(slot.GetTransactionBegin());
+    EXPECT_FALSE(slot.GetTransactionEnd());
+}
+
 using TransactionLogProxyElementFixture = TransactionLogFixture;
 TEST_F(TransactionLogProxyElementFixture, RollbackWillNotCallCallbackWhenNoTransactionsRecorded)
 {
