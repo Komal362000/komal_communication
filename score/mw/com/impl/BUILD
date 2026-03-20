@@ -225,11 +225,11 @@ cc_library(
     deps = [
         ":skeleton_event",
         ":skeleton_field_base",
+        "//score/mw/com/impl/methods:method_signature_element_ptr",
         "//score/mw/com/impl/methods:skeleton_method",
         "//score/mw/com/impl/mocking:i_skeleton_field",
         "//score/mw/com/impl/plumbing:field",
         "//score/mw/com/impl/plumbing:sample_allocatee_ptr",
-        "//score/mw/com/impl/methods:method_signature_element_ptr",
         "@score_baselibs//score/language/futurecpp",
         "@score_baselibs//score/result",
         "@score_logging//score/mw/log",

@@ -14,8 +14,8 @@
 #define SCORE_MW_COM_IMPL_SKELETON_FIELD_BASE_H
 
 #include "score/mw/com/impl/com_error.h"
-#include "score/mw/com/impl/skeleton_event_base.h"
 #include "score/mw/com/impl/methods/skeleton_method_base.h"
+#include "score/mw/com/impl/skeleton_event_base.h"
 
 #include "score/mw/log/logging.h"
 #include "score/result/result.h"
@@ -66,7 +66,8 @@ class SkeletonFieldBase
             // a set handler before calling OfferService(), otherwise Offer() shall fail.
             if (!IsSetHandlerRegistered())
             {
-                score::mw::log::LogWarn("lola") << "Set handler must be registered before offering field: "<< field_name_;
+                score::mw::log::LogWarn("lola")
+                    << "Set handler must be registered before offering field: " << field_name_;
                 return MakeUnexpected(ComErrc::kSetHandlerNotSet);
             }
 
