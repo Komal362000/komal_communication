@@ -50,7 +50,7 @@ jobs:
           env:
             EVENT_NAME: ${{ github.event_name }}
           run: |
-            python3 - <<'SCRIPT_END' >> "${GITHUB_OUTPUT}"
+            python3 - <<'SCRIPT_END'
             import json
             import os
 
@@ -70,9 +70,24 @@ jobs:
                     require_approval = True
                 else:
                     should_run = False
+            
+            should_run_string = 'true' if should_run else 'false'
+            require_approval_string = 'true' if require_approval else 'false'
 
-            print(f"should-run={'true' if should_run else 'false'}")
-            print(f"require-approval={'true' if require_approval else 'false'}")
+            labels_display = ", ".join(sorted(label for label in labels if label)) or "(none)"
+            print(
+                "QNX gate evaluation: "
+                f"event_name='{os.environ['EVENT_NAME']}', "
+                f"head_repo='{head_repo}', "
+                f"base_repo='{base_repo}', "
+                f"labels=[{labels_display}], "
+                f"outputs: should-run={should_run_string}, "
+                f"require-approval={require_approval_string}"
+            )
+
+            with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as github_output:
+                print(f"should-run={should_run_string}", file=github_output)
+                print(f"require-approval={require_approval_string}", file=github_output)
             SCRIPT_END
 
     approval:
