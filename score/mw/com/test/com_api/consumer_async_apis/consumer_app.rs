@@ -42,8 +42,11 @@ struct Args {
     num_cycles: usize,
 }
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
+    futures::executor::block_on(async_main());
+}
+
+async fn async_main() {
     let args = Args::parse();
     let num_cycles = args.num_cycles;
 

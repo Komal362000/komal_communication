@@ -22,7 +22,10 @@ rust_binary(
     # When Bazel builds this binary in exec config (py_test build with rule cfg=exec), the Rust linker
     # defaults to PIE and rejects non-PIC archives. -no-pie disables PIE; -lstdc++ is needed because
     # the link_std_cpp_lib CC feature is not activated in exec config.
-    rustc_flags = ["-Clink-arg=-no-pie", "-Clink-arg=-lstdc++"],
+    rustc_flags = [
+        "-Clink-arg=-no-pie",
+        "-Clink-arg=-lstdc++",
+    ],
     visibility = [
         "//score/mw/com/test/com_api:__subpackages__",
     ],
@@ -30,7 +33,7 @@ rust_binary(
         "//score/mw/com/impl/rust/com-api/com-api",
         "//score/mw/com/test/com_api:bigdata_com_api_gen_rs",
         "@score_communication_crate_index//:clap",
-        "@score_communication_crate_index//:tokio",
+        "@score_communication_crate_index//:futures",
     ],
 )
 
