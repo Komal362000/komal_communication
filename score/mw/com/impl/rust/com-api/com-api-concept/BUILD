@@ -48,11 +48,7 @@ rust_doc_test(
     # This causes _add_native_link_flags() to skip CC native dependencies.
     # With LLVM's strict LLD linker, this results in undefined symbol errors when
     # the crate depends on C++ libraries. GCC masks this with broader archive scanning.
-    # Disabled on sanitizers via target_compatible_with as we already have unit test for same component.
-    target_compatible_with = [
-        "//quality/sanitizer/constraints:no_tsan",
-        "//quality/sanitizer/constraints:no_asan_ubsan_lsan",
-    ],
+    tags = ["manual"],
     deps = ["//score/mw/com/impl/rust/com-api/com-api"],
 )
 

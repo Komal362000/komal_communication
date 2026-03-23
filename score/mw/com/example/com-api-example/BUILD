@@ -17,14 +17,12 @@ rust_binary(
     name = "com-api-example",
     srcs = ["basic-consumer-producer.rs"],
     data = ["etc/mw_com_config.json"],
-    env = {
-        "MW_COM_CONFIG_PATH": "$(rootpath //score/mw/com/example/com-api-example:etc/mw_com_config.json)",
-    },
     features = ["link_std_cpp_lib"],
     visibility = ["//visibility:public"],
     deps = [
         "//score/mw/com/example/com-api-example/com-api-gen",
         "//score/mw/com/impl/rust/com-api/com-api",
+        "@score_communication_crate_index//:clap",
     ],
 )
 
