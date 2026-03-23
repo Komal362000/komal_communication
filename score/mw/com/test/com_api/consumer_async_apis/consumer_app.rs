@@ -34,6 +34,7 @@ use std::path::Path;
 const CONFIG_PATH: &str = "etc/config.json";
 const MAX_SAMPLES_PER_CALL: usize = 5;
 
+
 #[derive(Parser)]
 struct Args {
     /// Number of samples to receive before exiting
@@ -41,7 +42,7 @@ struct Args {
     num_cycles: usize,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
     let args = Args::parse();
     let num_cycles = args.num_cycles;
@@ -111,7 +112,7 @@ async fn main() {
             }
             Err(e) => {
                 eprintln!("[bigdata-consumer] Receive error: {:?}", e);
-                std::process::exit(1);
+                return;
             }
         };
     }
