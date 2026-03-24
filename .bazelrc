@@ -104,4 +104,4 @@ common:codeql --noremote_upload_local_results
 common:codeql --disk_cache=
 
 # Use native sphinx_build_binary instead of the wrapper
-build --//score/mw/com/doc/sphinx/utils:use_native_sphinx_build
+build --//docs/sphinx/utils:use_native_sphinx_build
