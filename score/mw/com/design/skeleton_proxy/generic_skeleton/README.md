@@ -34,7 +34,7 @@ The following example demonstrates how to create a generic skeleton that provide
 const auto event_name = "map_api_lanes_stamped";
 // The middleware needs the size and alignment for memory allocation.
 const score::mw::com::impl::DataTypeMetaInfo event_meta_info{
-    sizeof(MapApiLanesStamped), 
+    sizeof(MapApiLanesStamped),
     alignof(MapApiLanesStamped)
 };
 
@@ -50,7 +50,7 @@ create_params.events = events;
 
 // 4. Create the Generic Skeleton instance.
 auto create_result = score::mw::com::impl::GenericSkeleton::Create(
-    instance_specifier, 
+    instance_specifier,
     create_params
 );
 
@@ -73,10 +73,10 @@ if (event_it != skeleton.GetEvents().cend()) {
     auto allocate_result = generic_event.Allocate();
     if (allocate_result.has_value()) {
         auto sample = std::move(allocate_result.value());
-        
+
         // Get the raw pointer from the smart pointer for populating the data.
         auto* typed_sample = static_cast<MapApiLanesStamped*>(sample.Get());
-        
+
         // ... populate the typed_sample ...
 
         // Send the sample.

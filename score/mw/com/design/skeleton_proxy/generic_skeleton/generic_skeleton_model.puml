@@ -13,7 +13,7 @@ class "SkeletonBindingFactory" {
   +{static} Create(InstanceIdentifier identifier): std::unique_ptr<SkeletonBinding>
 }
 
-abstract class "score::mw::com::impl::SkeletonBase" 
+abstract class "score::mw::com::impl::SkeletonBase"
 {
   -skeleton_binding_ : std::unique_ptr<SkeletonBinding>
   -identifier_ : InstanceIdentifier
@@ -64,7 +64,7 @@ abstract class "SkeletonEventBindingBase" {
   +{abstract} SetSkeletonEventTracingData(impl::tracing::SkeletonEventTracingData tracing_data) = 0: void
 }
 
-abstract class "SkeletonEventBinding<SampleType>" 
+abstract class "SkeletonEventBinding<SampleType>"
 {
   +{abstract} Send(const SampleType&) = 0: ResultBlank
   +{abstract} Allocate() = 0: Result<SampleAllocateePtr<SampleType>>
