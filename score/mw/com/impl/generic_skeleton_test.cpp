@@ -161,7 +161,7 @@ TEST_F(GenericSkeletonTest, CreateFailsIfEventBindingCannotBeCreated)
     // 2. Expect the Event Binding Factory to be called, but force it to FAIL
     // We simulate an internal failure by returning MakeUnexpected
     EXPECT_CALL(generic_skeleton_event_binding_factory_mock_, Create(_, event_name, _))
-        .WillOnce(Return(MakeUnexpected(ComErrc::kBindingFailure)));
+        .WillOnce(Return(ByMove(MakeUnexpected(ComErrc::kBindingFailure))));
 
     // 3. When creating the skeleton
     auto result = GenericSkeleton::Create(identifier, params);

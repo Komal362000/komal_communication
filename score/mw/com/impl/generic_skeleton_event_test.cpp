@@ -254,7 +254,7 @@ TEST_F(GenericSkeletonEventTest, AllocateReturnsErrorWhenBindingFails)
 
     // Expect the binding to fail allocation
     EXPECT_CALL(*mock_event_binding_ptr, Allocate())
-        .WillOnce(Return(MakeUnexpected(ComErrc::kSampleAllocationFailure)));
+        .WillOnce(Return(ByMove(MakeUnexpected(ComErrc::kSampleAllocationFailure))));
 
     // When calling Allocate()
     auto alloc_result = event->Allocate();
