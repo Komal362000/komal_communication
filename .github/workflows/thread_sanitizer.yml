@@ -33,7 +33,7 @@ jobs:
         - name: Checkout repository
           uses: actions/checkout@v4.2.2
         - name: Free Disk Space (Ubuntu)
-          uses: ./actions/free_disk_space
+          uses: eclipse-score/cicd-workflows/.github/actions/free_disk_space@main
         - uses: bazel-contrib/setup-bazel@0.18.0
           with:
             bazelisk-cache: true
