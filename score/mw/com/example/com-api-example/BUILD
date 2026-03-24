@@ -30,9 +30,6 @@ rust_test(
     name = "com-api-example-test",
     crate = ":com-api-example",
     data = ["etc/mw_com_config.json"],
-    env = {
-        "MW_COM_CONFIG_PATH": "$(rootpath //score/mw/com/example/com-api-example:etc/mw_com_config.json)",
-    },
     tags = ["manual"],
     deps = [
         ":com-api-example",
