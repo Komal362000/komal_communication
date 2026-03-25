@@ -127,39 +127,30 @@ class SkeletonField : public SkeletonFieldBase
     // \ brief Registers a handler that is invoked by the middleware whenever a proxy calls the field setter.
     //
     // \tparam CallableType Any callable (std::function, score::cpp::callback, lambda, ...) with the signature:
-    //         void(Result<FieldType>& result, const FieldType& new_value)
-    //   - new_value : the value requested by the proxy (read-only).
-    //   - result    : pre-initialised with new_value. The handler may
-    //                 leave it unchanged (accept), assign a different value (substitute),
-    //                 or assign an error via MakeUnexpected() (reject).
+    //         void(FieldType& new_value)
+    //   - new_value : the value requested by the proxy.
     template <bool ES = EnableSet, typename std::enable_if<ES, int>::type = 0, typename CallableType>
     ResultBlank RegisterSetHandler(CallableType&& handler)
     {
-        static_assert(std::is_invocable_v<CallableType, Result<FieldType>&, const FieldType&>,
-                      "RegisterSetHandler: handler must be callable as "
-                      "void(Result<FieldType>&, const FieldType&). "
-                      "First arg is the result/return out-ref, second is the incoming value (read-only).");
+        static_assert(std::is_invocable_v<CallableType, FieldType&>,
+                      "RegisterSetHandler: handler must be callable as void(FieldType& value). "
+                      "The argument initially holds the proxy-requested value and may be modified in-place.");
         set_handler_ = std::move(handler);
 
-        // Capture only self_ptr_ to stay within TypeErasedHandler capacity.
-        // The user callback is stored in set_handler_ on the SkeletonField itself.
-        auto wrapped_callback = [self = self_ptr_](FieldType new_value) -> Result<FieldType> {
-            Result<FieldType> result{new_value};
-            (*self)->set_handler_(result, new_value);
+        auto wrapped_callback = [this](const FieldType& new_value) -> FieldType {
+            // Allow user to validate/modify the value in-place
+            FieldType value = new_value;
+            set_handler_(value);
 
-            // User rejected the set request; propagate the error without calling Update().
-            if (!result.has_value())
-            {
-                return result;
-            }
-
-            const auto update_result = (*self)->Update(result.value());
+            // Store the (possibly modified) value as the latest field value
+            auto update_result = this->Update(value);
             if (!update_result.has_value())
             {
-                return MakeUnexpected<FieldType>(update_result.error());
+                score::mw::log::LogError("lola") << "Set handler: failed to update field value.";
             }
 
-            return result;
+            // Return the accepted value to the proxy
+            return value;
         };
 
         is_set_handler_registered_ = true;
@@ -183,30 +174,22 @@ class SkeletonField : public SkeletonFieldBase
     ISkeletonField<FieldType>* skeleton_field_mock_;
 
     // Zero-cost conditional storage: unique_ptr when EnableSet=true, zero-size tag when false.
-    using SetMethodType = std::conditional_t<EnableSet,
-                                             std::unique_ptr<SkeletonMethod<Result<FieldType>(FieldType)>>,
-                                             detail::EnableSetOnlyTag>;
+    using SetMethodType =
+        std::conditional_t<EnableSet, std::unique_ptr<SkeletonMethod<FieldType(FieldType)>>, detail::EnableSetOnlyTag>;
     SetMethodType set_method_;
 
-    // Stores the user-provided set handler. Kept as a member so that the type-erased
-    // binding lambda only captures self_ptr_ (16 bytes), staying within TypeErasedHandler
-    // capacity. The concrete storage type is score::cpp::callback with the expected signature
-    // so that any callable provided to RegisterSetHandler is type-erased here.
+    // Stores the user-provided set handler. Kept as a member so that the wrapped
+    // callback can invoke it via this->set_handler_. The concrete storage type is
+    // score::cpp::callback with the expected signature so that any callable provided
+    // to RegisterSetHandler is type-erased here.
     // Zero-cost when EnableSet=false.
-    using SetHandlerStorageType = std::conditional_t<EnableSet,
-                                                     score::cpp::callback<void(Result<FieldType>&, const FieldType&)>,
-                                                     detail::EnableSetOnlyTag>;
+    using SetHandlerStorageType =
+        std::conditional_t<EnableSet, score::cpp::callback<void(FieldType&)>, detail::EnableSetOnlyTag>;
     SetHandlerStorageType set_handler_{};
 
     // Tracks whether RegisterSetHandler() has been called. Zero-cost when EnableSet=false.
     using IsSetHandlerRegisteredType = std::conditional_t<EnableSet, bool, detail::EnableSetOnlyTag>;
     IsSetHandlerRegisteredType is_set_handler_registered_{};
-
-    // Stable indirection cell so that a stored set-handler callback remains valid after a move.
-    // The cell holds the current object address and is updated in the move-ctor/assignment.
-    // Zero-cost when EnableSet=false (collapses to the tag type).
-    using SelfPtrType = std::conditional_t<EnableSet, std::shared_ptr<SkeletonField*>, detail::EnableSetOnlyTag>;
-    SelfPtrType self_ptr_{};
 
     // EnableSet=true: checks the flag; EnableSet=false: no setter, no handler required.
     bool IsSetHandlerRegistered() const noexcept override
@@ -224,7 +207,7 @@ class SkeletonField : public SkeletonFieldBase
     template <bool ES = EnableSet, typename = std::enable_if_t<ES>>
     SkeletonField(SkeletonBase& parent,
                   std::unique_ptr<SkeletonEvent<FieldType>> skeleton_event_dispatch,
-                  std::unique_ptr<SkeletonMethod<Result<FieldType>(FieldType)>> set_method,
+                  std::unique_ptr<SkeletonMethod<FieldType(FieldType)>> set_method,
                   const std::string_view field_name);
 
     /// \brief Private delegating constructor used by the no-setter public ctor.
@@ -249,7 +232,7 @@ SkeletonField<SampleDataType, EnableSet, EnableNotifier>::SkeletonField(Skeleton
                                                          parent,
                                                          field_name),
                                                      typename SkeletonEvent<FieldType>::FieldOnlyConstructorEnabler{}),
-          std::make_unique<SkeletonMethod<Result<FieldType>(FieldType)>>(parent, std::string(field_name) + "_Set"),
+          std::make_unique<SkeletonMethod<FieldType(FieldType)>>(parent, std::string(field_name) + "_Set"),
           field_name}
 {
 }
@@ -293,13 +276,12 @@ template <bool ES, typename>
 SkeletonField<SampleDataType, EnableSet, EnableNotifier>::SkeletonField(
     SkeletonBase& parent,
     std::unique_ptr<SkeletonEvent<FieldType>> skeleton_event_dispatch,
-    std::unique_ptr<SkeletonMethod<Result<FieldType>(FieldType)>> set_method,
+    std::unique_ptr<SkeletonMethod<FieldType(FieldType)>> set_method,
     const std::string_view field_name)
     : SkeletonFieldBase{parent, field_name, std::move(skeleton_event_dispatch)},
       initial_field_value_{nullptr},
       skeleton_field_mock_{nullptr},
-      set_method_{std::move(set_method)},
-      self_ptr_{std::make_shared<SkeletonField*>(this)}
+      set_method_{std::move(set_method)}
 {
     SkeletonBaseView skeleton_base_view{parent};
     skeleton_base_view.RegisterField(field_name, *this);
@@ -332,16 +314,8 @@ SkeletonField<SampleDataType, EnableSet, EnableNotifier>::SkeletonField(Skeleton
       skeleton_field_mock_{other.skeleton_field_mock_},
       set_method_{std::move(other.set_method_)},
       set_handler_{std::move(other.set_handler_)},
-      is_set_handler_registered_{std::move(other.is_set_handler_registered_)},
-      self_ptr_{std::move(other.self_ptr_)}
+      is_set_handler_registered_{std::move(other.is_set_handler_registered_)}
 {
-    if constexpr (EnableSet)
-    {
-        if (self_ptr_)
-        {
-            *self_ptr_ = this;
-        }
-    }
     SkeletonBaseView skeleton_base_view{skeleton_base_.get()};
     skeleton_base_view.UpdateField(field_name_, *this);
 }
@@ -359,14 +333,6 @@ auto SkeletonField<SampleDataType, EnableSet, EnableNotifier>::operator=(Skeleto
         set_method_ = std::move(other.set_method_);
         set_handler_ = std::move(other.set_handler_);
         is_set_handler_registered_ = std::move(other.is_set_handler_registered_);
-        self_ptr_ = std::move(other.self_ptr_);
-        if constexpr (EnableSet)
-        {
-            if (self_ptr_)
-            {
-                *self_ptr_ = this;
-            }
-        }
         SkeletonBaseView skeleton_base_view{skeleton_base_.get()};
         skeleton_base_view.UpdateField(field_name_, *this);
     }

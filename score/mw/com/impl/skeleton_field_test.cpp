@@ -1022,8 +1022,7 @@ TEST(SkeletonFieldSetHandlerTest, RegisterSetHandlerForwardsToMethodBinding)
     MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
 
     // When RegisterSetHandler is called with a valid (no-op) handler
-    const auto result = unit.my_setter_field_.RegisterSetHandler(
-        [](Result<TestSampleType>& /*result*/, const TestSampleType& /*value*/) noexcept {});
+    const auto result = unit.my_setter_field_.RegisterSetHandler([](TestSampleType& /*value*/) noexcept {});
 
     // Then the registration succeeds
     EXPECT_TRUE(result.has_value());
@@ -1060,8 +1059,7 @@ TEST(SkeletonFieldSetHandlerTest, RegisterSetHandlerPropagatesBindingError)
     MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
 
     // When RegisterSetHandler is called
-    const auto result = unit.my_setter_field_.RegisterSetHandler(
-        [](Result<TestSampleType>& /*result*/, const TestSampleType& /*value*/) noexcept {});
+    const auto result = unit.my_setter_field_.RegisterSetHandler([](TestSampleType& /*value*/) noexcept {});
 
     // Then the error from the binding is propagated
     ASSERT_FALSE(result.has_value());
@@ -1143,10 +1141,7 @@ TEST(SkeletonFieldSetHandlerTest, PrepareOfferSucceedsAfterRegisterSetHandler)
     MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
 
     // Register a valid (no-op) set handler
-    ASSERT_TRUE(
-        unit.my_setter_field_
-            .RegisterSetHandler([](Result<TestSampleType>& /*result*/, const TestSampleType& /*value*/) noexcept {})
-            .has_value());
+    ASSERT_TRUE(unit.my_setter_field_.RegisterSetHandler([](TestSampleType& /*value*/) noexcept {}).has_value());
 
     // Set the initial field value
     ASSERT_TRUE(unit.my_setter_field_.Update(initial_value).has_value());
@@ -1200,22 +1195,21 @@ TEST(SkeletonFieldSetHandlerTest, RegisterSetHandlerAcceptsAnyCallable)
 {
     RecordProperty("Description",
                    "RegisterSetHandler() shall accept any callable (lambda, std::function, "
-                   "score::cpp::callback) with signature void(Result<FieldType>&, const FieldType&). "
+                   "score::cpp::callback) with signature void(FieldType&). "
                    "The public interface is not tied to a specific callable type.");
     RecordProperty("TestType", "Requirements-based test");
     RecordProperty("Priority", "1");
     RecordProperty("DerivationTechnique", "Analysis of requirements");
 
-    using HandlerSignature = void(Result<TestSampleType>&, const TestSampleType&);
+    using HandlerSignature = void(TestSampleType&);
 
     // lambda
-    static_assert(std::is_invocable_v<std::function<HandlerSignature>, Result<TestSampleType>&, const TestSampleType&>,
+    static_assert(std::is_invocable_v<std::function<HandlerSignature>, TestSampleType&>,
                   "std::function with expected signature must be invocable");
 
     // score::cpp::callback
-    static_assert(
-        std::is_invocable_v<score::cpp::callback<HandlerSignature>, Result<TestSampleType>&, const TestSampleType&>,
-        "score::cpp::callback with expected signature must be invocable");
+    static_assert(std::is_invocable_v<score::cpp::callback<HandlerSignature>, TestSampleType&>,
+                  "score::cpp::callback with expected signature must be invocable");
 }
 
 // Handler wrapping: user callback is invoked and the field value is updated
@@ -1274,8 +1268,7 @@ TEST(SkeletonFieldSetHandlerTest, UserCallbackIsInvokedByWrappedHandler)
 
     // Register a set handler that flags it was called
     ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([&user_callback_called](Result<TestSampleType>& /*result*/,
-                                                                const TestSampleType& /*value*/) noexcept {
+                    .RegisterSetHandler([&user_callback_called](TestSampleType& /*value*/) noexcept {
                         user_callback_called = true;
                     })
                     .has_value());
@@ -1289,11 +1282,11 @@ TEST(SkeletonFieldSetHandlerTest, UserCallbackIsInvokedByWrappedHandler)
     // We replicate that serialization here for the single TestSampleType argument.
     using InArgStorage = TestSampleType;
     InArgStorage in_arg{incoming_value};
-    Result<TestSampleType> return_storage{TestSampleType{}};
+    TestSampleType return_storage{};
     std::optional<score::cpp::span<std::byte>> in_span{
         score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(InArgStorage)}};
     std::optional<score::cpp::span<std::byte>> out_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(Result<TestSampleType>)}};
+        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(TestSampleType)}};
 
     capturing_binding_ref.captured_handler_(in_span, out_span);
 
@@ -1339,10 +1332,10 @@ TEST(SkeletonFieldSetHandlerTest, UserCallbackCanModifyValueInPlace)
 
     MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
 
-    // Register a set handler that doubles the incoming value and stores it in result
+    // Register a set handler that doubles the incoming value in-place
     ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([](Result<TestSampleType>& result, const TestSampleType& value) noexcept {
-                        result = static_cast<TestSampleType>(value * 2U);
+                    .RegisterSetHandler([](TestSampleType& value) noexcept {
+                        value = static_cast<TestSampleType>(value * 2U);
                     })
                     .has_value());
 
@@ -1351,11 +1344,11 @@ TEST(SkeletonFieldSetHandlerTest, UserCallbackCanModifyValueInPlace)
 
     // Invoke the wrapped handler with incoming_value (10)
     TestSampleType in_arg{incoming_value};
-    Result<TestSampleType> return_storage{TestSampleType{}};
+    TestSampleType return_storage{};
     std::optional<score::cpp::span<std::byte>> in_span{
         score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(in_arg)}};
     std::optional<score::cpp::span<std::byte>> out_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(Result<TestSampleType>)}};
+        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(TestSampleType)}};
 
     // The handler shall call Send with 20, not 10
     capturing_binding_ref.captured_handler_(in_span, out_span);
@@ -1403,139 +1396,11 @@ TEST(SkeletonFieldSetHandlerTest, IsSetHandlerRegisteredFlagIsSetAfterRegistrati
         //  that path; here we just confirm the happy path after registration.)
     }
 
-    ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([](Result<TestSampleType>& /*result*/, const TestSampleType& /*v*/) noexcept {})
-                    .has_value());
+    ASSERT_TRUE(unit.my_setter_field_.RegisterSetHandler([](TestSampleType& /*v*/) noexcept {}).has_value());
 
     // After registration PrepareOffer must succeed
     const auto result = unit.my_setter_field_.PrepareOffer();
     EXPECT_TRUE(result.has_value());
-}
-
-// Handler wrapping: Update failure inside the wrapped handler is propagated
-TEST(SkeletonFieldSetHandlerTest, WrappedHandlerPropagatesUpdateFailure)
-{
-    RecordProperty("Description",
-                   "When the Update() call inside the wrapped set handler fails, the wrapped handler "
-                   "shall return a Result<FieldType> containing the error so that the SkeletonMethod "
-                   "layer can propagate it to the caller.");
-    RecordProperty("TestType", "Requirements-based test");
-    RecordProperty("Priority", "1");
-    RecordProperty("DerivationTechnique", "Analysis of requirements");
-
-    const TestSampleType incoming_value{7U};
-
-    RuntimeMockGuard runtime_mock_guard{};
-    ON_CALL(runtime_mock_guard.runtime_mock_, GetTracingFilterConfig()).WillByDefault(Return(nullptr));
-
-    SkeletonFieldBindingFactoryMockGuard<TestSampleType> field_binding_factory_guard{};
-    auto event_binding_ptr = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
-    auto& event_binding = *event_binding_ptr;
-    EXPECT_CALL(field_binding_factory_guard.factory_mock_,
-                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
-        .WillOnce(Return(ByMove(std::move(event_binding_ptr))));
-
-    EXPECT_CALL(event_binding, PrepareOffer()).WillOnce(Return(ResultBlank{}));
-    // Deferred initial Send succeeds
-    EXPECT_CALL(event_binding, Send(TestSampleType{1U}, _)).WillOnce(Return(ResultBlank{}));
-    // The Send triggered by the wrapped handler fails
-    EXPECT_CALL(event_binding, Send(incoming_value, _))
-        .WillOnce(Return(MakeUnexpected(ComErrc::kCommunicationLinkError)));
-
-    // Capture the type-erased handler so we can inspect its return value
-    auto capturing_binding = std::make_unique<CapturingSkeletonMethodBinding>();
-    auto& capturing_binding_ref = *capturing_binding;
-
-    SkeletonMethodBindingFactoryMockGuard method_binding_factory_guard{};
-    EXPECT_CALL(method_binding_factory_guard.factory_mock_, Create(kInstanceIdWithLolaBinding, _, _))
-        .WillOnce(Return(ByMove(std::move(capturing_binding))));
-
-    MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
-
-    ASSERT_TRUE(
-        unit.my_setter_field_
-            .RegisterSetHandler([](Result<TestSampleType>& /*result*/, const TestSampleType& /*value*/) noexcept {})
-            .has_value());
-
-    ASSERT_TRUE(unit.my_setter_field_.Update(TestSampleType{1U}).has_value());
-    ASSERT_TRUE(unit.my_setter_field_.PrepareOffer().has_value());
-
-    // Invoke the wrapped handler — Update will fail inside it
-    TestSampleType in_arg{incoming_value};
-    Result<TestSampleType> return_storage{TestSampleType{0U}};
-    std::optional<score::cpp::span<std::byte>> in_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(in_arg)}};
-    std::optional<score::cpp::span<std::byte>> out_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(Result<TestSampleType>)}};
-
-    // The handler must not crash; the Send mock already verifies it was called with the right value.
-    EXPECT_NO_THROW(capturing_binding_ref.captured_handler_(in_span, out_span));
-}
-
-// Handler remains valid after SkeletonField is move-constructed (indirection cell)
-TEST(SkeletonFieldSetHandlerTest, WrappedHandlerRemainsValidAfterMoveConstruct)
-{
-    RecordProperty("Description",
-                   "After a SkeletonField with EnableSet=true is move-constructed into a new skeleton, "
-                   "the captured type-erased handler (which holds a shared_ptr to the indirection cell) "
-                   "must still dispatch to the new object. Invoking it must call the user callback and "
-                   "Update() on the moved-into field.");
-    RecordProperty("TestType", "Requirements-based test");
-    RecordProperty("Priority", "1");
-    RecordProperty("DerivationTechnique", "Analysis of requirements");
-
-    const TestSampleType incoming_value{33U};
-    bool user_callback_called{false};
-
-    RuntimeMockGuard runtime_mock_guard{};
-    ON_CALL(runtime_mock_guard.runtime_mock_, GetTracingFilterConfig()).WillByDefault(Return(nullptr));
-
-    SkeletonFieldBindingFactoryMockGuard<TestSampleType> field_binding_factory_guard{};
-    auto event_binding_ptr = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
-    auto& event_binding = *event_binding_ptr;
-    EXPECT_CALL(field_binding_factory_guard.factory_mock_,
-                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
-        .WillOnce(Return(ByMove(std::move(event_binding_ptr))));
-
-    EXPECT_CALL(event_binding, PrepareOffer()).WillOnce(Return(ResultBlank{}));
-    EXPECT_CALL(event_binding, Send(TestSampleType{1U}, _)).WillOnce(Return(ResultBlank{}));
-    EXPECT_CALL(event_binding, Send(incoming_value, _)).WillOnce(Return(ResultBlank{}));
-
-    auto capturing_binding = std::make_unique<CapturingSkeletonMethodBinding>();
-    auto& capturing_binding_ref = *capturing_binding;
-
-    SkeletonMethodBindingFactoryMockGuard method_binding_factory_guard{};
-    EXPECT_CALL(method_binding_factory_guard.factory_mock_, Create(kInstanceIdWithLolaBinding, _, _))
-        .WillOnce(Return(ByMove(std::move(capturing_binding))));
-
-    // Construct the original skeleton and register a handler BEFORE moving
-    MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
-
-    ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([&user_callback_called](Result<TestSampleType>& /*result*/,
-                                                                const TestSampleType& /*value*/) noexcept {
-                        user_callback_called = true;
-                    })
-                    .has_value());
-
-    ASSERT_TRUE(unit.my_setter_field_.Update(TestSampleType{1U}).has_value());
-    ASSERT_TRUE(unit.my_setter_field_.PrepareOffer().has_value());
-
-    // Move-construct a new skeleton — the indirection cell must be updated to point to the new field
-    MySetterSkeleton unit2{std::move(unit)};
-
-    // Invoke the handler that was captured before the move
-    TestSampleType in_arg{incoming_value};
-    Result<TestSampleType> return_storage{TestSampleType{}};
-    std::optional<score::cpp::span<std::byte>> in_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(in_arg)}};
-    std::optional<score::cpp::span<std::byte>> out_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(Result<TestSampleType>)}};
-
-    capturing_binding_ref.captured_handler_(in_span, out_span);
-
-    // The user callback must have been invoked on the moved-into object
-    EXPECT_TRUE(user_callback_called);
 }
 
 // RegisterSetHandler called twice: second call replaces the handler
@@ -1579,16 +1444,14 @@ TEST(SkeletonFieldSetHandlerTest, SecondRegisterSetHandlerReplacesHandler)
 
     // First registration
     ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([&first_callback_called](Result<TestSampleType>& /*result*/,
-                                                                 const TestSampleType& /*value*/) noexcept {
+                    .RegisterSetHandler([&first_callback_called](TestSampleType& /*value*/) noexcept {
                         first_callback_called = true;
                     })
                     .has_value());
 
     // Second registration — replaces the handler stored on the field
     ASSERT_TRUE(unit.my_setter_field_
-                    .RegisterSetHandler([&second_callback_called](Result<TestSampleType>& /*result*/,
-                                                                  const TestSampleType& /*value*/) noexcept {
+                    .RegisterSetHandler([&second_callback_called](TestSampleType& /*value*/) noexcept {
                         second_callback_called = true;
                     })
                     .has_value());
@@ -1598,11 +1461,11 @@ TEST(SkeletonFieldSetHandlerTest, SecondRegisterSetHandlerReplacesHandler)
 
     // Invoke the most-recently captured handler (from the second registration)
     TestSampleType in_arg{incoming_value};
-    Result<TestSampleType> return_storage{TestSampleType{}};
+    TestSampleType return_storage{};
     std::optional<score::cpp::span<std::byte>> in_span{
         score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(in_arg)}};
     std::optional<score::cpp::span<std::byte>> out_span{
-        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(Result<TestSampleType>)}};
+        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(TestSampleType)}};
 
     capturing_binding_ref.captured_handler_(in_span, out_span);
 
