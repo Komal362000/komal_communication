@@ -487,7 +487,8 @@ where
         )
     }
 
-    //TODO: add justification
+    // Cannot use `async fn` because the trait mandates `-> impl Future + 'a`,
+    // requiring the returned future to be explicitly bound to the lifetime of `&self`.
     #[allow(clippy::manual_async_fn)]
     fn receive<'a>(
         &'a self,

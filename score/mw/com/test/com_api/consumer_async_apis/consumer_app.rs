@@ -19,7 +19,7 @@
 //! ```
 //! bigdata-consumer -n <num_cycles>
 //! ```
-//! * `-n <num_cycles>` — number of samples to receive before exiting.
+//! `-n <num_cycles>` — number of samples to receive before exiting.
 //! The consumer subscribes to the producer's `map_api_lanes_stamped_` output and
 //! prints the `x` field of each received sample until it has received the specified number of samples, at which point it exits.
 

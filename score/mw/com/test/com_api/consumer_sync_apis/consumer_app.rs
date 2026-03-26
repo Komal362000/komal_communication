@@ -19,8 +19,8 @@
 //! bigdata-consumer -n <num_cycles>
 //! ```
 //!
-//! * `-n <num_cycles>` — number of `MapApiLanesStamped` samples to receive
-//!                       before exiting (required).
+//! `-n <num_cycles>` — number of `MapApiLanesStamped` samples to receive
+//! before exiting (required).
 //!
 //! The consumer retries service discovery until the producer is available,
 //! then subscribes to `map_api_lanes_stamped_` and reads exactly `num_cycles`
