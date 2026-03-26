@@ -1354,6 +1354,69 @@ TEST(SkeletonFieldSetHandlerTest, UserCallbackCanModifyValueInPlace)
     capturing_binding_ref.captured_handler_(in_span, out_span);
 }
 
+// Handler wrapping: Update() failure inside the wrapped handler is logged, not propagated
+TEST(SkeletonFieldSetHandlerTest, WrappedHandlerLogsWhenUpdateFails)
+{
+    RecordProperty("Description",
+                   "When the event binding's Send() fails inside the wrapped set handler, the "
+                   "failure shall be logged and the handler shall complete normally without "
+                   "propagating the error to the proxy caller. The user callback is still "
+                   "invoked before the failed Update().");
+    RecordProperty("TestType", "Requirements-based test");
+    RecordProperty("Priority", "1");
+    RecordProperty("DerivationTechnique", "Analysis of requirements");
+
+    const TestSampleType incoming_value{55U};
+    bool user_callback_called{false};
+
+    RuntimeMockGuard runtime_mock_guard{};
+    ON_CALL(runtime_mock_guard.runtime_mock_, GetTracingFilterConfig()).WillByDefault(Return(nullptr));
+
+    SkeletonFieldBindingFactoryMockGuard<TestSampleType> field_binding_factory_guard{};
+    auto event_binding_ptr = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
+    auto& event_binding = *event_binding_ptr;
+    EXPECT_CALL(field_binding_factory_guard.factory_mock_,
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
+        .WillOnce(Return(ByMove(std::move(event_binding_ptr))));
+
+    EXPECT_CALL(event_binding, PrepareOffer()).WillOnce(Return(ResultBlank{}));
+    EXPECT_CALL(event_binding, Send(TestSampleType{1U}, _)).WillOnce(Return(ResultBlank{}));
+    // Simulate Update() failure when the wrapped handler is invoked by the proxy
+    EXPECT_CALL(event_binding, Send(incoming_value, _))
+        .WillOnce(Return(MakeUnexpected(ComErrc::kCommunicationLinkError)));
+
+    auto capturing_binding = std::make_unique<CapturingSkeletonMethodBinding>();
+    auto& capturing_binding_ref = *capturing_binding;
+
+    SkeletonMethodBindingFactoryMockGuard method_binding_factory_guard{};
+    EXPECT_CALL(method_binding_factory_guard.factory_mock_, Create(kInstanceIdWithLolaBinding, _, _))
+        .WillOnce(Return(ByMove(std::move(capturing_binding))));
+
+    MySetterSkeleton unit{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+
+    ASSERT_TRUE(unit.my_setter_field_
+                    .RegisterSetHandler([&user_callback_called](TestSampleType& /*value*/) noexcept {
+                        user_callback_called = true;
+                    })
+                    .has_value());
+
+    ASSERT_TRUE(unit.my_setter_field_.Update(TestSampleType{1U}).has_value());
+    ASSERT_TRUE(unit.my_setter_field_.PrepareOffer().has_value());
+
+    TestSampleType in_arg{incoming_value};
+    TestSampleType return_storage{};
+    std::optional<score::cpp::span<std::byte>> in_span{
+        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&in_arg), sizeof(in_arg)}};
+    std::optional<score::cpp::span<std::byte>> out_span{
+        score::cpp::span<std::byte>{reinterpret_cast<std::byte*>(&return_storage), sizeof(TestSampleType)}};
+
+    // Handler must complete normally even when Update() returns an error
+    capturing_binding_ref.captured_handler_(in_span, out_span);
+
+    // The user callback was invoked before the failed Update()
+    EXPECT_TRUE(user_callback_called);
+}
+
 // RegisterSetHandler sets is_set_handler_registered_ flag
 TEST(SkeletonFieldSetHandlerTest, IsSetHandlerRegisteredFlagIsSetAfterRegistration)
 {

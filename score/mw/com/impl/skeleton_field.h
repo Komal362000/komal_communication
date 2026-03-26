@@ -137,20 +137,19 @@ class SkeletonField : public SkeletonFieldBase
                       "The argument initially holds the proxy-requested value and may be modified in-place.");
         set_handler_ = std::move(handler);
 
-        auto wrapped_callback = [this](const FieldType& new_value) -> FieldType {
+        auto wrapped_callback = [this](FieldType& new_value) -> FieldType {
             // Allow user to validate/modify the value in-place
-            FieldType value = new_value;
-            set_handler_(value);
+            set_handler_(new_value);
 
             // Store the (possibly modified) value as the latest field value
-            auto update_result = this->Update(value);
+            auto update_result = this->Update(new_value);
             if (!update_result.has_value())
             {
                 score::mw::log::LogError("lola") << "Set handler: failed to update field value.";
             }
 
             // Return the accepted value to the proxy
-            return value;
+            return new_value;
         };
 
         is_set_handler_registered_ = true;
