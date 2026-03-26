@@ -291,7 +291,7 @@ pip.parse(
 )
 use_repo(pip, "lobster_dependencies")
 
-bazel_dep(name = "score_bazel_platforms", version = "0.1.1")
+bazel_dep(name = "score_bazel_platforms", version = "0.1.2")
 
 bazel_dep(name = "rules_oci", version = "1.8.0", dev_dependency = True)
 
