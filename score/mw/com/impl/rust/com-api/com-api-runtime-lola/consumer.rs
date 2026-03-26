@@ -487,6 +487,8 @@ where
         )
     }
 
+    //TODO: add justification
+    #[allow(clippy::manual_async_fn)]
     fn receive<'a>(
         &'a self,
         scratch: SampleContainer<Self::Sample<'a>>,

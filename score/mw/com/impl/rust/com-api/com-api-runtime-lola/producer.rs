@@ -207,7 +207,7 @@ impl<'a, T> SampleMaybeUninit<'a, T>
 where
     T: CommData + Debug,
 {
-    fn get_allocatee_data_ptr(&self) -> Option<&mut core::mem::MaybeUninit<T>> {
+    fn get_allocatee_data_ptr(&mut self) -> Option<&mut core::mem::MaybeUninit<T>> {
         //SAFETY: allocatee_ptr is valid which is created using get_allocatee_ptr() and
         // it will be again type casted to T type pointer in cpp side so valid to send as void pointer
         let data_ptr = unsafe {
@@ -226,7 +226,7 @@ where
 {
     type SampleMut = SampleMut<'a, T>;
 
-    fn write(self, val: T) -> SampleMut<'a, T> {
+    fn write(mut self, val: T) -> SampleMut<'a, T> {
         let data_ptr = self
             .get_allocatee_data_ptr()
             .expect("Allocatee data pointer is null");

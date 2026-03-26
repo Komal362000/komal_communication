@@ -182,13 +182,17 @@ pub unsafe extern "C" fn mw_com_impl_call_dyn_ref_fnmut_sample(
 /// Rust closure invocation for C++ callbacks for FindService
 /// This function is called by C++ to invoke a Rust closure for finding services, passing a vector of service handles.
 /// This function invokes a Rust closure that takes a HandleContainer and a FindServiceHandle.
+/// # Safety
+/// - `ptr` must point to a valid FatPtr representing a closure of type FnMut(HandleContainer, NativeFindServiceHandle).
+/// - `service_handles` must point to valid NativeHandleContainer data that can be safely wrapped in a HandleContainer.
+/// - `find_service_handle` must point to valid FindServiceHandle data that can be safely wrapped in a NativeFindServiceHandle.
 #[no_mangle]
 pub unsafe extern "C" fn mw_com_impl_call_dyn_ref_fnmut_find_service(
     ptr: *const FatPtr,
     service_handles: *mut NativeHandleContainer,
     find_service_handle: *mut FindServiceHandle,
 ) {
-    if ptr.is_null() || service_handles.is_null() {
+    if ptr.is_null() || service_handles.is_null() || find_service_handle.is_null() {
         return;
     }
 

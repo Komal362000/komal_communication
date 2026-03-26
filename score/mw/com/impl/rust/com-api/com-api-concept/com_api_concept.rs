@@ -814,7 +814,6 @@ pub trait Subscription<T: CommData + Debug, R: Runtime + ?Sized> {
     /// If concurrent calls to `receive` are made on the same subscription instance, it will lead to panic.
     /// If user want to process samples concurrenly, then user should spwan to sample processing once the samples are received and stored in the container.
     /// The `receive` method itself should be called sequentially on the same subscription instance.
-
     //Notes for developers
     // The `Future` cannot have a `'static` lifetime. If we enforced `'static`, then `self` would
     // also need to be `'static`, which is not semantically correct for this use case.
