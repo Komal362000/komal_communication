@@ -1092,11 +1092,11 @@ EventDataControlComposite<> Skeleton::CreateEventControlComposite(
     return EventDataControlComposite{&control_qm.first->second.data_control, control_asil_result};
 }
 
-std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>>
-Skeleton::CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
-                                                const SkeletonEventProperties& element_properties,
-                                                size_t sample_size,
-                                                size_t sample_alignment) noexcept
+std::pair<void*, EventDataControlComposite<>> Skeleton::CreateEventDataFromOpenedSharedMemory(
+    const ElementFqId element_fq_id,
+    const SkeletonEventProperties& element_properties,
+    size_t sample_size,
+    size_t sample_alignment) noexcept
 {
 
     // Guard against over-aligned types (Short-term solution protection)
@@ -1122,7 +1122,7 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
     const size_t num_max_align_elements =
         (total_data_size_bytes + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t);
 
-    auto* data_storage = storage_resource_->construct<EventDataStorage<std::max_align_t>>(
+    auto* const data_storage = storage_resource_->construct<EventDataStorage<std::max_align_t>>(
         num_max_align_elements, memory::shared::PolymorphicOffsetPtrAllocator<std::max_align_t>(*storage_resource_));
 
     auto inserted_data_slots = storage_->events_.emplace(
@@ -1141,10 +1141,10 @@ Skeleton::CreateEventDataFromOpenedSharedMemory(const ElementFqId element_fq_id,
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(inserted_meta_info.second,
                                                 "Couldn't register/emplace event-meta-info in data-section.");
 
-    return {score::memory::shared::OffsetPtr<void>(data_storage),
-            CreateEventControlComposite(element_fq_id, element_properties)};
+    return {data_storage, CreateEventControlComposite(element_fq_id, element_properties)};
 }
-std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>> Skeleton::RegisterGeneric(
+
+std::pair<void*, EventDataControlComposite<>> Skeleton::RegisterGeneric(
     const ElementFqId element_fq_id,
     const SkeletonEventProperties& element_properties,
     const size_t sample_size,
@@ -1169,10 +1169,8 @@ std::pair<score::memory::shared::OffsetPtr<void>, EventDataControlComposite<>> S
 
         return {data_storage, control_composite};
     }
-    else
-    {
-        return CreateEventDataFromOpenedSharedMemory(element_fq_id, element_properties, sample_size, sample_alignment);
-    }
+
+    return CreateEventDataFromOpenedSharedMemory(element_fq_id, element_properties, sample_size, sample_alignment);
 }
 
 ResultBlank Skeleton::OnServiceMethodsSubscribed(const ProxyInstanceIdentifier& proxy_instance_identifier,
