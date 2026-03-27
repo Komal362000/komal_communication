@@ -22,7 +22,8 @@
 //! The implementation ensures proper memory management and resource handling
 //! through Rust's ownership model and FFI safety practices.
 
-//lifetime warning for all the Sample struct impl block, it is required for the Sample struct event lifetime parameter
+//lifetime warning for all the Sample struct impl block, it is required for the Sample struct
+// event lifetime parameter
 // and mentaining lifetime of instances and data reference
 // As of supressing clippy::needless_lifetimes
 //TODO: revist this once com-api is stable - Ticket-234827
@@ -63,7 +64,8 @@ impl LolaConsumerInfo {
 }
 
 //TODO: Ticket-238828 this type should be merge with Sample<T>
-//And sample_ptr_rs::SamplePtr<T> FFI function should be move in plumbing folder sample_ptr_rs module
+//And sample_ptr_rs::SamplePtr<T> FFI function should be move in plumbing folder
+//sample_ptr_rs module
 #[derive(Debug)]
 pub struct LolaBinding<T>
 where
@@ -94,7 +96,8 @@ pub struct Sample<T>
 where
     T: CommData + Debug,
 {
-    //we need unique id for each sample to implement Ord and Eq traits for sorting in SampleContainer
+    //we need unique id for each sample to implement Ord and Eq traits for sorting in
+    // SampleContainer
     id: usize,
     inner: LolaBinding<T>,
 }
@@ -163,7 +166,8 @@ where
     }
 }
 
-/// Manages the lifetime of the native proxy instance, user should clone this to share between threads
+/// Manages the lifetime of the native proxy instance,
+/// user should clone this to share between threads
 /// Always use this struct to manage the proxy instance pointer
 pub struct ProxyInstanceManager(Arc<NativeProxyBase>);
 
@@ -184,9 +188,11 @@ impl std::fmt::Debug for ProxyInstanceManager {
 /// It does not provide any mutable access to the underlying proxy instance
 /// And it does not provide any method to access the proxy instance directly
 /// Or to perform any operation on it
-/// If any additional method is required to be added, ensure that the safety of the proxy instance is maintained
+/// If any additional method is required to be added,
+/// ensure that the safety of the proxy instance is maintained
 /// And the lifetime is managed correctly
-/// As it has Send and Sync unsafe impls, it must not expose any mutable access to the proxy instance
+/// As it has Send and Sync unsafe impls,
+/// it must not expose any mutable access to the proxy instance
 /// Or must not provide any method to access the proxy instance directly
 pub struct NativeProxyBase {
     proxy: *mut ProxyBase, // Stores the proxy instance
@@ -333,10 +339,12 @@ struct ProxyEventManager {
 }
 
 //SAFETY: ProxyEventManager is safe to send between threads because:
-// Pointer is created during subscription and it is valid as long as the subscriber instance is valid
+// Pointer is created during subscription and
+// it is valid as long as the subscriber instance is valid
 // The proxy event lifetime is managed safely through Drop of the parent subscriber instance
 // which ensures the proxy handle remains valid as long as events are in use
-// However, it uses an AtomicBool to ensure that concurrent receive calls are not allowed on the same subscriber instance,
+// However, it uses an AtomicBool to ensure that concurrent receive calls are not allowed on the
+// same subscriber instance,
 // which provides thread safety for receive operations.
 unsafe impl Send for ProxyEventManager {}
 unsafe impl Sync for ProxyEventManager {}
@@ -349,10 +357,12 @@ impl ProxyEventManager {
             in_progress: AtomicBool::new(false),
         }
     }
-    /// Provides access to the proxy event pointer while ensuring that concurrent receive calls are not allowed.
+    /// Provides access to the proxy event pointer while ensuring that-
+    /// concurrent receive calls are not allowed on the same subscriber instance.
     pub fn get_proxy_event(&self) -> ProxyEventManagerGuard<'_> {
         //Acquire the lock to ensure that only one receive call can access the proxy event at a time
-        //Relaxed ordering is not sufficient here because we need to ensure that the in_progress flag is updated before any receive call can access the proxy event
+        //Relaxed ordering is not sufficient here because we need to ensure that the in_progress
+        // flag is updated before any receive call can access the proxy event
         if self
             .in_progress
             .swap(true, std::sync::atomic::Ordering::Acquire)
@@ -406,8 +416,9 @@ impl<'a> DerefMut for ProxyEventManagerGuard<'a> {
 
 /// The SubscriberImpl struct implements the Subscriber trait for LolaRuntimeImpl.
 /// It manages the subscription to a specific event and provides methods to receive samples.
-/// It uses the ProxyEventManager to manage access to the proxy event pointer and ensure thread safety
-/// during receive operations. It also manages the asynchronous initialization of the receive callback
+/// It uses the ProxyEventManager to manage access to
+/// the proxy event pointer and ensure thread safety during receive operations.
+/// It also manages the asynchronous initialization of the receive callback
 /// and the waker storage for async notifications when new samples arrive.
 #[derive(Debug)]
 pub struct SubscriberImpl<T>
@@ -427,8 +438,8 @@ where
 impl<T: CommData + Debug> Drop for SubscriberImpl<T> {
     fn drop(&mut self) {
         //SAFETY: it is safe to clear the event receive handler because event ptr is valid
-        // which was obtained from valid proxy instance and the callback set for this event stream will be dropped after this,
-        // so it won't be called after the handler is cleared
+        // which was obtained from valid proxy instance and the callback set for this event stream
+        // will be dropped after this, so it won't be called after the handler is cleared
         unsafe {
             bridge_ffi_rs::clear_event_receive_handler(
                 self.event.get_proxy_event().deref_mut(),
@@ -448,9 +459,11 @@ impl<T: CommData + Debug> SubscriberImpl<T> {
         let ptr = Box::into_raw(boxed_handler);
         let fat_ptr: FatPtr = unsafe { std::mem::transmute(ptr) };
 
-        // SAFETY: it is safe to set the event receive handler because event ptr is a valid ProxyEventBase pointer
+        // SAFETY: it is safe to set the event receive handler because event ptr is a valid
+        // ProxyEventBase pointer.
         // The callback is a simple waker that wakes the future when new samples arrive,
-        // and the lifetime of the callback is managed by Rust, it will not outlive the scope of this function call.
+        // and the lifetime of the callback is managed by Rust, it will not outlive the scope of
+        // this function call.
         unsafe {
             bridge_ffi_rs::set_event_receive_handler(event_guard.deref_mut(), &fat_ptr, T::ID);
         }
@@ -500,7 +513,8 @@ where
             if max_samples > self.max_num_samples || new_samples > self.max_num_samples {
                 return Err(Error::Fail);
             }
-            // Get the event guard to ensure no concurrent receive calls on the same subscriber instance.
+            // Get the event guard to ensure no concurrent receive calls
+            // on the same subscriber instance.
             let mut event_guard = self.event.get_proxy_event();
             // Initialize the async receive callback only once when the first receive call is made
             if !self
@@ -527,8 +541,9 @@ where
     }
 }
 
-// The ReceiveFuture struct encapsulates the state and logic for asynchronously receiving samples from the proxy event.
-// It holds a reference to the proxy event manager, a waker storage for async notifications, and parameters for managing the receive operation.
+// The ReceiveFuture struct encapsulates the state and logic for asynchronously receiving samples
+// from the proxy event. It holds a reference to the proxy event manager,
+// a waker storage for async notifications, and parameters for managing the receive operation.
 // The Future implementation for ReceiveFuture defines the polling logic,
 // which attempts to receive samples and manages the state of the receive operation.
 struct ReceiveFuture<'a, T: CommData + Debug> {
@@ -579,7 +594,8 @@ impl<'a, T: CommData + Debug> Future for ReceiveFuture<'a, T> {
 
                 // Check if we've received enough samples
                 if self.total_received >= new_samples {
-                    //event_guard will be dropped here, allowing new receive calls to access the proxy event
+                    //event_guard will be dropped here, allowing new receive calls to access the
+                    // proxy event
                     self.event_guard = None;
                     return Poll::Ready(self.scratch.take().ok_or(Error::Fail));
                 }
@@ -599,7 +615,8 @@ impl<'a, T: CommData + Debug> Future for ReceiveFuture<'a, T> {
 /// - After the callback completes, `handles` contains `Some(ServiceHandleContainer)`.
 /// - `poll()` takes ownership via `.take()` to prevent double-processing of the same result.
 ///
-/// `find_handle` is intentionally NOT stored here — it is owned directly by `ServiceDiscoveryFuture`.
+/// `find_handle` is intentionally NOT stored here — it is owned directly by
+/// `ServiceDiscoveryFuture`.
 /// Rationale:
 /// - `start_find_service` returns it synchronously, guaranteeing availability for cleanup.
 /// - Storing in callback would create a race: if the future drops before the callback fires,
@@ -664,10 +681,15 @@ where
             .collect();
         Ok(available_instances)
     }
-    /// This function initiates an asynchronous service discovery process and returns a future that resolves to the available service instances.
-    /// It uses FFI to call the underlying C++ service discovery mechanism and sets up a callback to receive the discovery results.
-    /// The future will poll for discovery results and return them once available, while also ensuring stop find service is called when the future is dropped to clean up resources.
-    /// The implementation uses an AtomicWaker to wake up the future when discovery results are received from the C++ callback, and it manages the shared state of discovery results using a Mutex.
+    /// This function initiates an asynchronous service discovery process and returns a future
+    /// that resolves to the available service instances.
+    /// It uses FFI to call the underlying C++ service discovery mechanism and sets up a callback
+    /// to receive the discovery results.
+    /// The future will poll for discovery results and return them once available, while also
+    /// ensuring stop find service is called when the future is dropped to clean up resources.
+    /// The implementation uses an AtomicWaker to wake up the future when discovery results are
+    /// received from the C++ callback,
+    /// and it manages the shared state of discovery results using a Mutex.
     fn get_available_instances_async(
         &self,
     ) -> impl Future<Output = Result<Self::ServiceEnumerator>> + Send {
@@ -726,7 +748,8 @@ where
             }
         });
         async move {
-            // Early return error if starting service discovery failed, to avoid awaiting on the future when there is error in starting discovery
+            // Early return error if starting service discovery failed, to avoid awaiting on the
+            // future when there is error in starting discovery
             let find_handle = find_service_result?;
             // Create and await the discovery future
             ServiceDiscoveryFuture {
@@ -741,9 +764,12 @@ where
 }
 
 /// Future that waits for service discovery to complete and then returns the available instances
-/// It polls the shared state for discovery results and uses an AtomicWaker to wake up when results are available
-/// It also ensures that the find service is stopped when the future is dropped to clean up resources
-/// Stop find service in Drop implementation to ensure that we clean up the find service if the future is dropped before completion
+/// It polls the shared state for discovery results and uses an AtomicWaker to wake up when
+/// results are available
+/// It also ensures that the find service is stopped when the future is dropped to clean up
+/// resources.
+/// Stop find service in Drop implementation to ensure that we clean up the find service if the
+/// future is dropped before completion
 struct ServiceDiscoveryFuture<I: Interface> {
     find_handle: bridge_ffi_rs::NativeFindServiceHandle,
     discovery_state: Arc<std::sync::Mutex<DiscoveryStateData>>,
@@ -781,7 +807,8 @@ impl<I: Interface> Future for ServiceDiscoveryFuture<I> {
         // Without synchronization, the callback writing handles while poll reads
         // them could cause data races and undefined behavior across thread boundaries.
         // The lock duration is minimal - just reading two Option fields, not blocking operations.
-        // In practice, contention is zero: callback runs once asynchronously, poll spins until done.
+        // In practice, contention is zero: callback runs once asynchronously,
+        // poll spins until done.
         // The Mutex is necessary for memory safety, not just performance.
         let mut state_guard = self
             .discovery_state
@@ -909,7 +936,8 @@ pub fn create_sample_callback<'a, T: CommData + Debug>(
             while scratch.sample_count() >= max_samples {
                 scratch.pop_front();
             }
-            // After pop from SampleContainer to make room, push should always succeed, otherwise we lose the data
+            // After pop from SampleContainer to make room,
+            // push should always succeed, otherwise we lose the data
             assert!(
                 scratch.push_back(wrapped_sample).is_ok(),
                 "Failed to push sample after making room in buffer"
