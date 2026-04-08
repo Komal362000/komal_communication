@@ -116,6 +116,7 @@ TEST_F(ConfigParserFixture, ParseExampleJson)
     EXPECT_EQ(secondDeploymentInfo.fields_.at("CurrentTemperatureFrontLeft").max_subscribers_.value(), 6);
     EXPECT_EQ(secondDeploymentInfo.fields_.at("CurrentTemperatureFrontLeft").enforce_max_samples_, true);
     EXPECT_EQ(secondDeploymentInfo.fields_.at("CurrentTemperatureFrontLeft").max_concurrent_allocations_.value(), 1);
+    EXPECT_TRUE(secondDeploymentInfo.methods_.at("SetPressure").enabled_);
 
     const auto service_deployment = config.GetServiceTypes().at(deployments.service_);
     const auto* const lola_service_type_deployment =

@@ -22,20 +22,27 @@ namespace
 {
 using std::string_view_literals::operator""sv;
 constexpr auto kQueueSizeKey = "queueSize"sv;
+constexpr auto kMethodEnabledKey = "enabled"sv;
 }  // namespace
 
-LolaMethodInstanceDeployment::LolaMethodInstanceDeployment(std::optional<QueueSize> queue_size)
-    : queue_size_{queue_size}
+LolaMethodInstanceDeployment::LolaMethodInstanceDeployment(std::optional<QueueSize> queue_size, bool enabled)
+    : queue_size_{queue_size}, enabled_{enabled}
 {
 }
 
 LolaMethodInstanceDeployment::LolaMethodInstanceDeployment(
     const score::json::Object& serialized_lola_method_instance_deployment)
+    : queue_size_{std::nullopt}, enabled_{true}
 {
     const auto queue_size_iter = serialized_lola_method_instance_deployment.find(kQueueSizeKey.data());
     if (queue_size_iter != serialized_lola_method_instance_deployment.cend())
     {
         queue_size_ = queue_size_iter->second.As<QueueSize>().value();
+    }
+    const auto enabled_iter = serialized_lola_method_instance_deployment.find(kMethodEnabledKey.data());
+    if (enabled_iter != serialized_lola_method_instance_deployment.cend())
+    {
+        enabled_ = enabled_iter->second.As<bool>().value();
     }
 }
 
@@ -52,6 +59,7 @@ score::json::Object LolaMethodInstanceDeployment::Serialize() const
     {
         result[kQueueSizeKey.data()] = score::json::Any{queue_size_.value()};
     }
+    result[kMethodEnabledKey.data()] = score::json::Any{enabled_};
     return result;
 }
 

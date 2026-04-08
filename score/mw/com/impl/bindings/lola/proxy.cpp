@@ -413,6 +413,7 @@ Proxy::Proxy(std::shared_ptr<memory::shared::ManagedMemoryResource> control,
              score::filesystem::Filesystem filesystem,
              ProxyInstanceIdentifier::ProxyInstanceCounter proxy_instance_counter) noexcept
     : ProxyBinding{},
+    
       control_{std::move(control)},
       data_{std::move(data)},
       method_shm_resource_{nullptr},
