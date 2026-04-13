@@ -21,6 +21,7 @@ bazel_dep(name = "nlohmann_json", version = "3.11.3")
 bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "rules_cc", version = "0.1.5")
 bazel_dep(name = "rules_python", version = "1.5.1")
+bazel_dep(name = "aspect_rules_py", version = "1.4.0")
 bazel_dep(name = "rules_rust", version = "0.68.1-score")
 bazel_dep(name = "score_baselibs", version = "0.2.6")
 bazel_dep(name = "score_baselibs_rust", version = "0.1.0")
@@ -285,7 +286,6 @@ pip.parse(
     python_version = "3.12",
     requirements_lock = "@lobster//:requirements.txt",
 )
-use_repo(pip, "lobster_dependencies")
 
 bazel_dep(name = "rules_oci", version = "1.8.0", dev_dependency = True)
 
@@ -331,4 +331,9 @@ git_repository(
     build_file = "//third_party/codeql:codeql_coding_standards.BUILD",
     commit = "781f1eecfa2fc9970fb08447588a0b4d19a7908d",
     remote = "https://github.com/github/codeql-coding-standards.git",
+)
+
+register_toolchains(
+    "//bazel/toolchains:sphinx_toolchain",
+    dev_dependency = True,
 )
