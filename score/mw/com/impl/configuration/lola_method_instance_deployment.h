@@ -39,10 +39,11 @@ class LolaMethodInstanceDeployment
      * @brief Construct LolaMethodInstanceDeployment with optional queue size, because LolaMethodInstanceDeployment for
      * a consumer will have a value while one for a provider will not.
      * @param queue_size The maximum number of pending method requests that can be queued.
-    * @param enabled Optional flag to disable/enable the method.
+     * @param enabled Optional flag to disable/enable the method. It is always filled on proxy side and always empty
+     *                on skeleton side.
      */
     explicit LolaMethodInstanceDeployment(std::optional<QueueSize> queue_size,
-                                  std::optional<bool> enabled = std::nullopt);
+                                          std::optional<bool> enabled = std::nullopt);
 
     explicit LolaMethodInstanceDeployment(const score::json::Object& serialized_lola_method_instance_deployment);
 
