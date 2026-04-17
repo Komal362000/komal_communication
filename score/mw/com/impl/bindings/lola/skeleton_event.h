@@ -125,7 +125,7 @@ class SkeletonEvent final : public SkeletonEventBinding<SampleType>
 
     SkeletonEventCommon event_shared_impl_;
 
-    SkeletonEventCommon event_shared_impl_;
+    SkeletonEventCommon<SampleType> event_shared_impl_;
 };
 
 template <typename SampleType>
