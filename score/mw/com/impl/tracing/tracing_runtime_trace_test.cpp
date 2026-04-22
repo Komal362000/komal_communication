@@ -54,9 +54,9 @@ const void* const kLocalDataPtr{reinterpret_cast<void*>(static_cast<intptr_t>(50
 constexpr std::size_t kLocalDataSize{8};
 const std::optional<TracingRuntime::TracePointDataId> kEmptyDataId{};
 
-const analysis::tracing::ServiceInstanceElement::EventIdType kServiceInstanceElementEventId = 42U;
-const analysis::tracing::ServiceInstanceElement::VariantType kServiceInstanceElementVariant{
-    kServiceInstanceElementEventId};
+const analysis::tracing::ServiceInstanceElement::EventIdType kServiceInstanceElementEventId{42U};
+const analysis::tracing::ServiceInstanceElement::StdVariantType kServiceInstanceElementVariant{
+    analysis::tracing::ServiceInstanceElement::EventId{kServiceInstanceElementEventId}};
 const analysis::tracing::ServiceInstanceElement kServiceInstanceElement{25, 1, 0, 1, kServiceInstanceElementVariant};
 
 // Debouncing test constants
@@ -361,7 +361,7 @@ TEST_P(TracingRuntimeTraceShmParamaterisedFixture, TraceShmDataOK_RetryShmObject
     EXPECT_CALL(binding_tracing_runtime_mock_, SetDataLossFlag(false)).Times(1);
     EXPECT_CALL(binding_tracing_runtime_mock_, GetTraceClientId()).WillRepeatedly(Return(trace_client_id_));
 
-    analysis::tracing::ServiceInstanceElement::VariantType variant{};
+    analysis::tracing::ServiceInstanceElement::StdVariantType variant{};
     analysis::tracing::ServiceInstanceElement service_instance_element{25, 1, 0, 1, variant};
     EXPECT_CALL(binding_tracing_runtime_mock_,
                 ConvertToTracingServiceInstanceElement(dummy_service_element_instance_identifier_view_))
@@ -499,8 +499,7 @@ TEST_P(TracingRuntimeTraceShmParamaterisedFixture, TraceShmDataNOK_NoCachedFiled
     // runtime, which doesn't return any
     EXPECT_CALL(binding_tracing_runtime_mock_,
                 GetCachedFileDescriptorForReregisteringShmObject(dummy_service_element_instance_identifier_view_))
-        .WillOnce(
-            Return(std::optional<std::pair<memory::shared::ISharedMemoryResource::FileDescriptor, void*>>{}));
+        .WillOnce(Return(std::optional<std::pair<memory::shared::ISharedMemoryResource::FileDescriptor, void*>>{}));
 
     // when we call Trace on the UuT
     auto result = unit_under_test_->Trace(BindingType::kLoLa,
@@ -543,7 +542,7 @@ TEST_P(TracingRuntimeTraceShmParamaterisedDeathTest, TraceShmDataNOK_GetShmRegio
         // address
         EXPECT_CALL(binding_tracing_runtime_mock_,
                     GetShmRegionStartAddress(dummy_service_element_instance_identifier_view_))
-            .WillOnce(Return(score::cpp::optional<void*>{}));
+            .WillOnce(Return(std::optional<void*>{}));
         // when we call Trace on the UuT
         std::ignore = unit_under_test_->Trace(BindingType::kLoLa,
                                               service_element_tracing_data_,
@@ -902,8 +901,9 @@ TEST_P(TracingRuntimeTraceLocalParamaterisedFixture, TraceLocalData_NonRecoverab
     analysis::tracing::LocalDataChunk root_chunk{kLocalDataPtr, kLocalDataSize};
     analysis::tracing::LocalDataChunkList expected_chunk_list{root_chunk};
 
-    analysis::tracing::ServiceInstanceElement::EventIdType event_id = 42U;
-    analysis::tracing::ServiceInstanceElement::VariantType variant{event_id};
+    analysis::tracing::ServiceInstanceElement::EventIdType event_id{42U};
+    analysis::tracing::ServiceInstanceElement::StdVariantType variant{
+        analysis::tracing::ServiceInstanceElement::EventId{event_id}};
     analysis::tracing::ServiceInstanceElement service_instance_element{25, 1, 0, 1, variant};
 
     // expect, that UuT calls GetDataLossFlag() on the binding specific tracing runtime to setup meta-info property
@@ -958,7 +958,7 @@ TEST_P(TracingRuntimeTraceLocalParamaterisedFixture, DisabledTracing_EarlyReturn
     auto result1 = unit_under_test_->Trace(BindingType::kLoLa,
                                            dummy_service_element_instance_identifier_view_,
                                            trace_point_type_,
-                                           score::cpp::optional<TracingRuntime::TracePointDataId>{},
+                                           std::optional<TracingRuntime::TracePointDataId>{},
                                            reinterpret_cast<void*>(static_cast<intptr_t>(500)),
                                            std::size_t{0});
     EXPECT_FALSE(result1.has_value());
@@ -999,8 +999,9 @@ TEST_P(TracingRuntimeTraceLocalParamaterisedFixture, TraceLocalData_FatalError)
     analysis::tracing::LocalDataChunk root_chunk{kLocalDataPtr, kLocalDataSize};
     analysis::tracing::LocalDataChunkList expected_chunk_list{root_chunk};
 
-    analysis::tracing::ServiceInstanceElement::EventIdType event_id = 42U;
-    analysis::tracing::ServiceInstanceElement::VariantType variant{event_id};
+    analysis::tracing::ServiceInstanceElement::EventIdType event_id{42U};
+    analysis::tracing::ServiceInstanceElement::StdVariantType variant{
+        analysis::tracing::ServiceInstanceElement::EventId{event_id}};
     analysis::tracing::ServiceInstanceElement service_instance_element{25, 1, 0, 1, variant};
 
     // expect, that UuT calls GetDataLossFlag() on the binding specific tracing runtime to setup meta-info property
