@@ -37,6 +37,8 @@ concurrency:
 
 env:
   LICENSE_DIR: "/opt/score_qnx/license"
+  ANDROID_HOME: ""
+  ANDROID_SDK_ROOT: ""
 jobs:
     precheck:
       runs-on: ubuntu-24.04
