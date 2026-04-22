@@ -14,8 +14,8 @@
 filegroup(
     name = "smart_pointer_fta",
     srcs = [
-        "//score/mw/com/requirements/safety_analysis/root_causes/smart_pointer/method_signature_element_ptr:method_signature_element_ptr_fta",
-        "//score/mw/com/requirements/safety_analysis/root_causes/smart_pointer/sample_ptr_sample_allocate_ptr",
+        "//score/mw/com/dependability/requirements/safety_analysis/root_causes/smart_pointer/method_signature_element_ptr:method_signature_element_ptr_fta",
+        "//score/mw/com/dependability/requirements/safety_analysis/root_causes/smart_pointer/sample_ptr_sample_allocate_ptr",
     ],
     visibility = ["//visibility:public"],
 )

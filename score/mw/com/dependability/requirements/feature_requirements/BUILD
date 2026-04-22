@@ -17,7 +17,7 @@ trlc_requirements(
     name = "feature_requirements_ipc",
     srcs = [
         "feature_requirements_ipc.trlc",
-        "//score/mw/com/requirements/assumed_system_requirements",
+        "//score/mw/com/dependability/requirements/assumed_system_requirements",
     ],
     spec = [
         "@score_tooling//bazel/rules/rules_score/trlc/config:score_requirements_model",
