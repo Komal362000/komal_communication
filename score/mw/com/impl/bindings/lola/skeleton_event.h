@@ -34,7 +34,6 @@
 #include "score/mw/log/logging.h"
 
 #include <score/assert.hpp>
-#include <score/optional.hpp>
 #include <score/utility.hpp>
 
 #include <atomic>
@@ -86,11 +85,11 @@ class SkeletonEvent final : public SkeletonEventBinding<SampleType>
     /// \brief Sends a value by _copy_ towards a consumer. It will allocate the necessary space and then copy the value
     /// into Shared Memory.
     Result<void> Send(const SampleType& value,
-                      score::cpp::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback>
+                      std::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback>
                           send_trace_callback) noexcept override;
 
     Result<void> Send(impl::SampleAllocateePtr<SampleType> sample,
-                      score::cpp::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback>
+                      std::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback>
                           send_trace_callback) noexcept override;
 
     Result<impl::SampleAllocateePtr<SampleType>> Allocate() noexcept override;
@@ -141,7 +140,7 @@ template <typename SampleType>
 // coverity[autosar_cpp14_a15_5_3_violation : FALSE]
 Result<void> SkeletonEvent<SampleType>::Send(
     const SampleType& value,
-    score::cpp::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback> send_trace_callback) noexcept
+    std::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback> send_trace_callback) noexcept
 {
     auto allocated_slot_result = Allocate();
     if (!(allocated_slot_result.has_value()))
@@ -157,7 +156,7 @@ Result<void> SkeletonEvent<SampleType>::Send(
 template <typename SampleType>
 Result<void> SkeletonEvent<SampleType>::Send(
     impl::SampleAllocateePtr<SampleType> sample,
-    score::cpp::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback> send_trace_callback) noexcept
+    std::optional<typename SkeletonEventBinding<SampleType>::SendTraceCallback> send_trace_callback) noexcept
 {
     const auto send_result = skeleton_event_common_.Send(sample);
     if (!send_result.has_value())
