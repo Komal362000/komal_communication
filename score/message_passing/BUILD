@@ -199,7 +199,7 @@ cc_library(
         "additional_warnings",
     ],
     tags = ["FFI"],
-    visibility = ["//visibility:public"],
+    visibility = ["//score/mw/com/impl:__subpackages__"],
     deps = [
         ":message_passing_common",
         ":qnx_resource_path",
