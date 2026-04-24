@@ -46,15 +46,6 @@ template <template <class> class AtomicIndirectorType>
 auto ProviderEventDataControlLocalView<AtomicIndirectorType>::AllocateNextSlot() noexcept
     -> std::optional<SlotIndexType>
 {
-    auto log_performance_metrics = [](std::uint64_t& retry_counter) {
-        score::cpp::ignore = num_alloc_retries.fetch_add(retry_counter);
-
-        if ((retry_counter >= MAX_ALLOCATE_RETRIES))
-        {
-            ++num_alloc_misses;
-        }
-    };
-
     std::uint64_t retry_counter{0U};
 
     for (; retry_counter <= MAX_ALLOCATE_RETRIES; ++retry_counter)
@@ -67,11 +58,11 @@ auto ProviderEventDataControlLocalView<AtomicIndirectorType>::AllocateNextSlot()
 
         if (TryAllocateSlot(oldest_unused_slot_info_result.value()).has_value())
         {
-            log_performance_metrics(retry_counter);
+            LogPerformanceMetrics(retry_counter);
             return oldest_unused_slot_info_result.value().slot_index;
         }
     }
-    log_performance_metrics(retry_counter);
+    LogPerformanceMetrics(retry_counter);
     return {};
 }
 
@@ -229,6 +220,18 @@ auto ProviderEventDataControlLocalView<AtomicIndirectorType>::DumpPerformanceCou
               // operator follows the idiomatic way that both features in conjunction were designed in the C++
               // standard. coverity[autosar_cpp14_m8_4_4_violation : FALSE]
               << std::endl;
+}
+
+template <template <class> class AtomicIndirectorType>
+void ProviderEventDataControlLocalView<AtomicIndirectorType>::LogPerformanceMetrics(
+    std::uint64_t retry_counter) noexcept
+{
+    score::cpp::ignore = num_alloc_retries.fetch_add(retry_counter);
+
+    if ((retry_counter >= 100U))
+    {
+        ++num_alloc_misses;
+    }
 }
 
 template <template <class> class AtomicIndirectorType>
