@@ -91,7 +91,7 @@ TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithoutQueueSi
     EXPECT_EQ(unit.queue_size_, std::nullopt);
 }
 
-TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithoutEnabledByDefaultSetsEnableToTrue)
+TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithoutEnabledLeavesEnabledUnset)
 {
     // Given a JSON object without enabled
     const LolaMethodInstanceDeployment::QueueSize queue_size{20U};
@@ -101,8 +101,9 @@ TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithoutEnabled
     // When creating from JSON
     auto unit = LolaMethodInstanceDeployment::CreateFromJson(json_object);
 
-    // Then the method instance should be enabled by default
-    EXPECT_TRUE(unit.enabled_);
+    // Then the method instance should keep enabled unset
+    EXPECT_FALSE(unit.enabled_.has_value());
+    EXPECT_EQ(unit.enabled_, std::nullopt);
 }
 
 TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithEnabledFalseDisablesMethod)
@@ -115,7 +116,8 @@ TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithEnabledFal
     auto unit = LolaMethodInstanceDeployment::CreateFromJson(json_object);
 
     // Then the method instance should be disabled
-    EXPECT_FALSE(unit.enabled_);
+    ASSERT_TRUE(unit.enabled_.has_value());
+    EXPECT_FALSE(unit.enabled_.value());
 }
 
 TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithEnabledTrueEnablesMethod)
@@ -128,7 +130,8 @@ TEST(LolaMethodInstanceDeploymentSerializationTest, CreateFromJsonWithEnabledTru
     auto unit = LolaMethodInstanceDeployment::CreateFromJson(json_object);
 
     // Then the method instance should be enabled
-    EXPECT_TRUE(unit.enabled_);
+    ASSERT_TRUE(unit.enabled_.has_value());
+    EXPECT_TRUE(unit.enabled_.value());
 }
 
 TEST(LolaMethodInstanceDeploymentSerializationTest, SerializeAndDeserializePreservesQueueSize)
@@ -177,7 +180,8 @@ TEST(LolaMethodInstanceDeploymentSerializationTest, SerializeAndDeserializePrese
     auto reconstructed_unit = LolaMethodInstanceDeployment::CreateFromJson(serialized);
 
     // Then the enabled state should be preserved
-    EXPECT_FALSE(reconstructed_unit.enabled_);
+    ASSERT_TRUE(reconstructed_unit.enabled_.has_value());
+    EXPECT_FALSE(reconstructed_unit.enabled_.value());
     EXPECT_EQ(reconstructed_unit, original_unit);
 }
 

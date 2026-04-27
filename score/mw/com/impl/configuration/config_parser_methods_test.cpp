@@ -694,7 +694,8 @@ TEST_F(ConfigParserFixture, MethodCanBeExplicitlyDisabled)
     const auto deployments =
         config.GetServiceInstances().at(InstanceSpecifier::Create(std::string{"abc/abc/TirePressurePort"}).value());
     const auto& lola_deployment = std::get<LolaServiceInstanceDeployment>(deployments.bindingInfo_);
-    EXPECT_FALSE(lola_deployment.methods_.at("SetPressure").enabled_);
+    ASSERT_TRUE(lola_deployment.methods_.at("SetPressure").enabled_.has_value());
+    EXPECT_FALSE(lola_deployment.methods_.at("SetPressure").enabled_.value());
 }
 
 TEST_F(ConfigParserFixture, MethodCanBeExplicitlyEnabled)
@@ -760,7 +761,8 @@ TEST_F(ConfigParserFixture, MethodCanBeExplicitlyEnabled)
     const auto deployments =
         config.GetServiceInstances().at(InstanceSpecifier::Create(std::string{"abc/abc/TirePressurePort"}).value());
     const auto& lola_deployment = std::get<LolaServiceInstanceDeployment>(deployments.bindingInfo_);
-    EXPECT_TRUE(lola_deployment.methods_.at("SetPressure").enabled_);
+    ASSERT_TRUE(lola_deployment.methods_.at("SetPressure").enabled_.has_value());
+    EXPECT_TRUE(lola_deployment.methods_.at("SetPressure").enabled_.value());
 }
 
 }  // namespace
