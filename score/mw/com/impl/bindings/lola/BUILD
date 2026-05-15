@@ -12,8 +12,8 @@
 # *******************************************************************************
 
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@score_baselibs//:bazel/unit_tests.bzl", "cc_gtest_unit_test", "cc_unit_test", "cc_unit_test_suites_for_host_and_qnx")
 load("@score_tooling//bazel/rules/rules_score:rules_score.bzl", "component", "unit")
+load("//quality/unit_testing:unit_testing.bzl", "cc_unit_test")
 load("//score/mw:common_features.bzl", "COMPILER_WARNING_FEATURES")
 
 component(
@@ -905,7 +905,7 @@ cc_library(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "partial_restart_path_builder_test",
     srcs = ["partial_restart_path_builder_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -915,14 +915,14 @@ cc_gtest_unit_test(
     deps = [":partial_restart_path_builder"],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "shm_path_builder_test",
     srcs = ["shm_path_builder_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
     deps = [":shm_path_builder"],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "application_id_pid_mapping_test",
     srcs = ["application_id_pid_mapping_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -933,7 +933,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "generic_proxy_event_test",
     srcs = ["generic_proxy_event_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -955,12 +955,11 @@ cc_unit_test(
         "//score/mw/com/impl/bindings/lola/test:skeleton_test_resources",
         "//score/mw/com/impl/configuration/test:configuration_store",
         "@googletest//:gtest",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "type_erased_sample_ptrs_guard_test",
     srcs = ["type_erased_sample_ptrs_guard_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -989,18 +988,16 @@ cc_unit_test(
     ],
     deps = [
         "@googletest//:gtest",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/containers:dynamic_array",
         "@score_baselibs//score/containers:non_relocatable_vector",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/memory/shared:polymorphic_offset_ptr_allocator",
         "@score_baselibs//score/memory/shared/fake:fake_memory_resources",
         "@score_baselibs//score/mw/log",
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "event_data_control_test",
     srcs = ["event_data_control_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1012,7 +1009,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "provider_event_data_control_local_view_test",
     size = "small",
     timeout = "long",
@@ -1061,7 +1058,7 @@ cc_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "event_data_control_composite_test",
     srcs = ["event_data_control_composite_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1126,7 +1123,7 @@ cc_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_test",
     srcs = ["proxy_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1153,7 +1150,6 @@ cc_unit_test(
         "//score/mw/com/impl/bindings/lola/test:proxy_event_test_resources",
         "//score/mw/com/impl/configuration/test:configuration_store",
         "@googletest//:gtest",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/filesystem:mock",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
         "@score_baselibs//score/memory/shared:shared_memory_resource_mock",
@@ -1161,7 +1157,7 @@ cc_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_event_test",
     srcs = ["proxy_event_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1171,7 +1167,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "slot_decrementer_test",
     srcs = ["slot_decrementer_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1184,7 +1180,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "transaction_log_rollback_executor_test",
     srcs = ["transaction_log_rollback_executor_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -1202,7 +1198,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "element_fq_id_test",
     srcs = [
         "element_fq_id_test.cpp",
@@ -1214,7 +1210,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "event_data_storage_test",
     srcs = [
         "event_data_storage_test.cpp",
@@ -1227,7 +1223,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "event_slot_status_test",
     srcs = [
         "event_slot_status_test.cpp",
@@ -1238,7 +1234,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "event_subscription_control_test",
     srcs = [
         "event_subscription_control_test.cpp",
@@ -1251,7 +1247,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_event_common_test",
     srcs = [
         "proxy_event_common_test.cpp",
@@ -1263,7 +1259,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "runtime_test",
     srcs = [
         "runtime_test.cpp",
@@ -1275,7 +1271,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "sample_allocatee_ptr_test",
     srcs = [
         "sample_allocatee_ptr_test.cpp",
@@ -1286,7 +1282,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "sample_ptr_test",
     srcs = [
         "sample_ptr_test.cpp",
@@ -1297,7 +1293,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "service_data_storage_test",
     srcs = [
         "service_data_storage_test.cpp",
@@ -1317,7 +1313,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_event_test",
     srcs = [
         "skeleton_event_test.cpp",
@@ -1328,7 +1324,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_event_tracing_test",
     srcs = [
         "skeleton_event_tracing_test.cpp",
@@ -1341,7 +1337,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "slot_collector_test",
     srcs = [
         "slot_collector_test.cpp",
@@ -1355,7 +1351,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "subscription_state_machine_events_test",
     srcs = [
         "subscription_state_machine_events_test.cpp",
@@ -1368,7 +1364,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "subscription_state_machine_methods_test",
     srcs = [
         "subscription_state_machine_methods_test.cpp",
@@ -1380,7 +1376,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "subscription_state_machine_states_test",
     srcs = [
         "subscription_state_machine_states_test.cpp",
@@ -1391,7 +1387,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "transaction_log_registration_guard_test",
     srcs = [
         "transaction_log_registration_guard_test.cpp",
@@ -1403,7 +1399,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "transaction_log_set_test",
     srcs = [
         "transaction_log_set_test.cpp",
@@ -1420,7 +1416,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "transaction_log_slot_test",
     srcs = [
         "transaction_log_slot_test.cpp",
@@ -1431,7 +1427,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "transaction_log_local_view_test",
     srcs = [
         "transaction_log_local_view_test.cpp",
@@ -1444,7 +1440,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "runtime_application_id_test",
     srcs = [
         "runtime_application_id_test.cpp",
@@ -1456,7 +1452,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_instance_identifier_test",
     srcs = ["proxy_instance_identifier_test.cpp"],
     deps = [
@@ -1464,7 +1460,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_instance_identifier_test",
     srcs = ["skeleton_instance_identifier_test.cpp"],
     deps = [
@@ -1489,69 +1485,9 @@ cc_unit_test(
         "//score/mw/com/impl/bindings/lola/test:proxy_event_test_resources",
         "//score/mw/com/impl/configuration/test:configuration_store",
         "@googletest//:gtest",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
         "@score_baselibs//score/memory:data_type_size_info",
         "@score_baselibs//score/mw/log",
         "@score_baselibs//score/result",
-    ],
-)
-
-cc_unit_test_suites_for_host_and_qnx(
-    name = "unit_test_suite",
-    cc_unit_tests = [
-        ":element_fq_id_test",
-        ":event_data_storage_test",
-        ":event_slot_status_test",
-        ":event_subscription_control_test",
-        ":proxy_event_common_test",
-        ":runtime_application_id_test",
-        ":runtime_test",
-        ":sample_allocatee_ptr_test",
-        ":proxy_method_test",
-        ":sample_ptr_test",
-        ":service_data_storage_test",
-        ":skeleton_event_test",
-        ":skeleton_event_tracing_test",
-        ":slot_collector_test",
-        ":subscription_state_machine_events_test",
-        ":subscription_state_machine_methods_test",
-        ":subscription_state_machine_states_test",
-        ":transaction_log_registration_guard_test",
-        ":transaction_log_set_test",
-        ":transaction_log_slot_test",
-        ":transaction_log_local_view_test",
-        ":dynamic_array_bounds_checking_test",
-        ":event_data_control_test",
-        ":event_data_control_composite_test",
-        ":consumer_event_data_control_local_view_test",
-        ":provider_event_data_control_local_view_test",
-        ":generic_proxy_event_test",
-        ":partial_restart_path_builder_test",
-        ":proxy_instance_identifier_test",
-        ":skeleton_instance_identifier_test",
-        ":proxy_event_test",
-        ":proxy_method_handling_test",
-        ":proxy_test",
-        ":shm_path_builder_test",
-        ":skeleton_test",
-        ":skeleton_method_test",
-        ":skeleton_method_handling_test",
-        ":slot_decrementer_test",
-        ":transaction_log_rollback_executor_test",
-        ":type_erased_sample_ptrs_guard_test",
-        ":application_id_pid_mapping_test",
-        "//score/mw/com/impl/bindings/lola/test:proxy_component_test",
-        "//score/mw/com/impl/bindings/lola/test:skeleton_component_test",
-        "//score/mw/com/impl/bindings/lola/test:skeleton_event_component_test",
-    ],
-    test_suites_from_sub_packages = [
-        "//score/mw/com/impl/bindings/lola/messaging:unit_test_suite",
-        "//score/mw/com/impl/bindings/lola/methods:unit_test_suite",
-        "//score/mw/com/impl/bindings/lola/service_discovery:unit_test_suite",
-        "//score/mw/com/impl/bindings/lola/tracing:unit_test_suite",
-    ],
-    visibility = [
-        "//score/mw/com/impl:__pkg__",
     ],
 )

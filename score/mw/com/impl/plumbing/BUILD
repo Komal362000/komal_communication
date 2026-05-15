@@ -12,7 +12,7 @@
 # *******************************************************************************
 
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@score_baselibs//:bazel/unit_tests.bzl", "cc_gtest_unit_test", "cc_unit_test_suites_for_host_and_qnx")
+load("//quality/unit_testing:unit_testing.bzl", "cc_unit_test")
 load("//score/mw:common_features.bzl", "COMPILER_WARNING_FEATURES")
 
 cc_library(
@@ -93,7 +93,7 @@ cc_library(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_method_binding_factory_test",
     srcs = [
         "skeleton_method_binding_factory_test.cpp",
@@ -751,7 +751,7 @@ cc_library(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_method_binding_factory_test",
     srcs = [
         "proxy_method_binding_factory_test.cpp",
@@ -769,7 +769,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_event_field_binding_factory_test",
     srcs = [
         "proxy_event_field_binding_factory_test.cpp",
@@ -782,7 +782,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_event_binding_factory_test",
     srcs = [
         "proxy_event_binding_factory_test.cpp",
@@ -793,7 +793,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "proxy_field_binding_factory_test",
     srcs = [
         "proxy_field_binding_factory_test.cpp",
@@ -804,7 +804,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_service_element_binding_factory_test",
     srcs = [
         "skeleton_service_element_binding_factory_test.cpp",
@@ -818,7 +818,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_event_binding_factory_test",
     srcs = [
         "skeleton_event_binding_factory_test.cpp",
@@ -829,7 +829,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "skeleton_field_binding_factory_test",
     srcs = [
         "skeleton_field_binding_factory_test.cpp",
@@ -840,7 +840,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "binding_runtime_factory_test",
     srcs = [
         "binding_runtime_factory_test.cpp",
@@ -884,24 +884,5 @@ cc_test(
         "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/mw/log",
         "@score_baselibs//score/os/mocklib:fcntl_mock",
-    ],
-)
-
-cc_unit_test_suites_for_host_and_qnx(
-    name = "unit_test_suite",
-    cc_unit_tests = [
-        ":proxy_event_binding_factory_test",
-        ":proxy_method_binding_factory_test",
-        ":proxy_field_binding_factory_test",
-        ":proxy_event_field_binding_factory_test",
-        ":skeleton_method_binding_factory_test",
-        ":binding_runtime_factory_test",
-        ":skeleton_event_binding_factory_test",
-        ":skeleton_field_binding_factory_test",
-        ":skeleton_service_element_binding_factory_test",
-        ":unit_test",
-    ],
-    visibility = [
-        "//score/mw/com/impl:__subpackages__",
     ],
 )

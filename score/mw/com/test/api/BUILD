@@ -12,8 +12,8 @@
 # *******************************************************************************
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
-load("@score_baselibs//:bazel/unit_tests.bzl", "cc_gtest_unit_test", "cc_unit_test_suites_for_host_and_qnx")
 load("@score_baselibs//score/language/safecpp:toolchain_features.bzl", "COMPILER_WARNING_FEATURES")
+load("//quality/unit_testing:unit_testing.bzl", "cc_unit_test")
 
 cc_library(
     name = "api",
@@ -26,7 +26,7 @@ cc_library(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "generated_api_test",
     srcs = ["generated_api_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -35,12 +35,4 @@ cc_gtest_unit_test(
         ":api",
         "@score_baselibs//score/mw/log",
     ],
-)
-
-cc_unit_test_suites_for_host_and_qnx(
-    name = "unit_test_suite",
-    cc_unit_tests = [
-        ":generated_api_test",
-    ],
-    visibility = ["//score/mw/com:__pkg__"],
 )

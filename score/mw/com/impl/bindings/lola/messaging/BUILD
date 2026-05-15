@@ -12,7 +12,7 @@
 # *******************************************************************************
 
 load("@rules_cc//cc:defs.bzl", "cc_library", "cc_test")
-load("@score_baselibs//:bazel/unit_tests.bzl", "cc_gtest_unit_test", "cc_unit_test_suites_for_host_and_qnx")
+load("//quality/unit_testing:unit_testing.bzl", "cc_unit_test")
 load("//score/mw:common_features.bzl", "COMPILER_WARNING_FEATURES")
 
 cc_library(
@@ -288,7 +288,7 @@ cc_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "message_passing_service_test",
     srcs = ["message_passing_service_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -302,7 +302,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "node_identifier_copier_test",
     srcs = ["node_identifier_copier_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -312,7 +312,7 @@ cc_gtest_unit_test(
     deps = [":node_identifier_copier"],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "message_passing_client_cache_test",
     srcs = ["message_passing_client_cache_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -326,7 +326,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "message_passing_service_instance_test",
     srcs = ["message_passing_service_instance_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -342,7 +342,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "mw_log_logger_test",
     srcs = ["mw_log_logger_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -355,7 +355,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "method_subscription_registration_guard_test",
     srcs = ["method_subscription_registration_guard_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -370,7 +370,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "method_call_registration_guard_test",
     srcs = ["method_call_registration_guard_test.cpp"],
     features = COMPILER_WARNING_FEATURES,
@@ -384,7 +384,7 @@ cc_gtest_unit_test(
     ],
 )
 
-cc_gtest_unit_test(
+cc_unit_test(
     name = "message_passing_service_instance_methods_test",
     srcs = ["message_passing_service_instance_methods_test.cpp"],
     features = COMPILER_WARNING_FEATURES + [
@@ -399,20 +399,4 @@ cc_gtest_unit_test(
         "@score_baselibs//score/os/mocklib:unistd_mock",
         "@score_communication//score/message_passing:mock",
     ],
-)
-
-cc_unit_test_suites_for_host_and_qnx(
-    name = "unit_test_suite",
-    cc_unit_tests = [
-        ":thread_abstraction_test",
-        ":node_identifier_copier_test",
-        ":message_passing_service_instance_test",
-        ":message_passing_client_cache_test",
-        ":message_passing_service_instance_methods_test",
-        ":message_passing_service_test",
-        ":mw_log_logger_test",
-        ":method_subscription_registration_guard_test",
-        ":method_call_registration_guard_test",
-    ],
-    visibility = ["//score/mw/com/impl/bindings/lola:__pkg__"],
 )
