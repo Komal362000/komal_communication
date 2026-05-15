@@ -269,22 +269,18 @@ cc_library(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "thread_abstraction_test",
-    # TODO: Investigate why this unit tests takes more than 1 minute under memcheck (Ticket-141169)
-    timeout = "moderate",
     srcs = [
         "thread_abstraction_test.cpp",
     ],
     features = COMPILER_WARNING_FEATURES,
-    tags = ["unit"],
     visibility = [
         "//score/mw/com/impl/bindings/lola/messaging:__pkg__",
     ],
     deps = [
         ":thread_abstraction",
         ":thread_abstraction_mock",
-        "@googletest//:gtest_main",
     ],
 )
 

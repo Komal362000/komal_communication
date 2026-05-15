@@ -168,7 +168,6 @@ cc_unit_test(
     srcs = [
         "command_line_parser_test.cpp",
     ],
-    target_compatible_with = ["@platforms//os:linux"],
     deps = [
         ":command_line_parser",
     ],

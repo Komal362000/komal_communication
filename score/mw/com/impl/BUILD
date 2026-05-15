@@ -1010,9 +1010,8 @@ cc_library(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "unit_test_runtime_single_exec",
-    timeout = "moderate",
     srcs = ["runtime_single_exec_test.cpp"],
     data = [
         "//score/mw/com/impl/configuration:mw_com_config.json",
@@ -1025,12 +1024,9 @@ cc_test(
     features = [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":impl",
         ":runtime",
-        "@googletest//:gtest_main",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/mw/log",
         "@score_baselibs//score/utils/meyer_singleton/test:single_test_per_process_fixture",
     ],
@@ -1279,10 +1275,8 @@ cc_unit_test(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "unit_test",
-    # TODO: Investigate why this unit tests takes more than 1 minute under memcheck (Ticket-141169)
-    timeout = "moderate",
     srcs = [
         "enriched_instance_identifier_test.cpp",
         "generic_proxy_event_test.cpp",
@@ -1304,7 +1298,6 @@ cc_test(
     features = COMPILER_WARNING_FEATURES + [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":enriched_instance_identifier",
         ":impl",
@@ -1327,10 +1320,8 @@ cc_test(
         "//score/mw/com/impl/test:proxy_resources",
         "//score/mw/com/impl/test:runtime_mock_guard",
         "//score/mw/com/impl/tracing:tracing_test_resources",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/analysis/tracing/generic_trace_library/mock:trace_library_mock",
         "@score_baselibs//score/language/futurecpp",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/os/mocklib:mman_mock",
         "@score_baselibs//score/os/mocklib:stat_mock",
     ],

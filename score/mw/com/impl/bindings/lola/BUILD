@@ -1011,31 +1011,24 @@ cc_unit_test(
 
 cc_unit_test(
     name = "provider_event_data_control_local_view_test",
-    size = "small",
-    timeout = "long",
     srcs = [
         "provider_event_data_control_local_view_test.cpp",
     ],
     features = COMPILER_WARNING_FEATURES + [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":provider_event_data_control_local_view",
         "//score/mw/com/impl/bindings/lola:event_data_control",
         "//score/mw/com/impl/bindings/lola:event_slot_status",
         "//score/mw/com/impl/bindings/lola/test_doubles:fake_memory_resource",
-        "@googletest//:gtest_main",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/memory/shared:atomic_indirector_mock_binding",
         "@score_baselibs//score/mw/log",
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "consumer_event_data_control_local_view_test",
-    size = "small",
-    timeout = "long",
     srcs = [
         "consumer_event_data_control_local_view_test.cpp",
     ],
@@ -1043,16 +1036,13 @@ cc_test(
         # These tests catch exceptions instead of using gtest EXPECT_DEATH so we disable aborts_upon_exception.
         "-aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":consumer_event_data_control_local_view",
         ":provider_event_data_control_local_view",
         "//score/mw/com/impl/bindings/lola:event_data_control",
         "//score/mw/com/impl/bindings/lola/test_doubles:fake_memory_resource",
         "//score/mw/com/impl/configuration",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/memory/shared:atomic_indirector_mock_binding",
         "@score_baselibs//score/mw/log",
     ],
@@ -1076,29 +1066,23 @@ cc_unit_test(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "skeleton_test",
-    timeout = "long",  # Investigate why tests timeout and mark as cc_gtest_unit_test in Ticket-178974
     srcs = ["skeleton_test.cpp"],
     features = COMPILER_WARNING_FEATURES + [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":skeleton",
         "//score/mw/com/impl/bindings/lola/test:skeleton_test_resources",
         "//score/mw/com/impl/bindings/lola/test:transaction_log_test_resources",
         "//score/mw/com/impl/bindings/mock_binding",
         "//score/mw/com/impl/tracing:tracing_runtime_mock",
-        "@googletest//:gtest_main",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "skeleton_method_handling_test",
-    # TODO: Investigate why this unit tests takes more than 1 minute under memcheck (Ticket-141169)
-    timeout = "moderate",
     srcs = [
         "skeleton_method_handling_test.cpp",
     ],
@@ -1106,14 +1090,11 @@ cc_test(
         # These tests catch exceptions instead of using gtest EXPECT_DEATH so we disable aborts_upon_exception.
         "-aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":skeleton",
         "//score/mw/com/impl:binding_type",
         "//score/mw/com/impl/bindings/lola/test:skeleton_test_resources",
         "//score/mw/com/impl/configuration/test:configuration_store",
-        "@googletest//:gtest",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/language/futurecpp",
         "@score_baselibs//score/language/futurecpp:futurecpp_test_support",
         "@score_baselibs//score/memory:data_type_size_info",

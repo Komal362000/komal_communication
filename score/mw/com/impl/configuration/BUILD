@@ -476,21 +476,16 @@ cc_unit_test(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "configuration_common_resources_test",
-    size = "small",
-    timeout = "long",
     srcs = ["configuration_common_resources_test.cpp"],
     features = [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     deps = [
         ":configuration_common_resources",
-        "@googletest//:gtest_main",
         "@score_baselibs//score/json",
         "@score_baselibs//score/language/futurecpp",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
     ],
 )
 

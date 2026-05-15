@@ -853,9 +853,8 @@ cc_unit_test(
     ],
 )
 
-cc_test(
+cc_unit_test(
     name = "unit_test",
-    size = "medium",
     srcs = [
         "proxy_binding_factory_test.cpp",
         "sample_allocatee_ptr_test.cpp",
@@ -865,7 +864,6 @@ cc_test(
     features = COMPILER_WARNING_FEATURES + [
         "aborts_upon_exception",
     ],
-    tags = ["unit"],
     visibility = [
         "//score/mw/com/impl:__subpackages__",
     ],
@@ -880,8 +878,6 @@ cc_test(
         "//score/mw/com/impl/bindings/mock_binding",
         "//score/mw/com/impl/test:dummy_instance_identifier_builder",
         "//score/mw/com/impl/test:runtime_mock_guard",
-        "@googletest//:gtest_main",
-        "@score_baselibs//score/language/safecpp/coverage_termination_handler",
         "@score_baselibs//score/mw/log",
         "@score_baselibs//score/os/mocklib:fcntl_mock",
     ],
