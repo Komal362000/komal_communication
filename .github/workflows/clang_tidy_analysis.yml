@@ -19,11 +19,6 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
-  workflow_call:
-    outputs:
-      duration-seconds:
-        description: Runtime of the clang-tidy check in seconds.
-        value: ${{ jobs.clang_tidy.outputs.duration-seconds }}
 
 permissions:
   contents: read
@@ -39,8 +34,6 @@ env:
 jobs:
   clang_tidy:
     runs-on: ubuntu-24.04
-    outputs:
-      duration-seconds: ${{ steps.timer.outputs.duration-seconds }}
     steps:
       - name: Start timer
         id: start_time

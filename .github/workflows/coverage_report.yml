@@ -18,14 +18,6 @@ on:
   pull_request:
     types: [opened, reopened, synchronize]
   workflow_dispatch:
-  workflow_call:
-    outputs:
-      artifact-name:
-        description: 'Name of the coverage report artifact'
-        value: ${{ jobs.coverage_report.outputs.artifact-name }}
-      duration-seconds:
-        description: Runtime of the coverage check in seconds.
-        value: ${{ jobs.coverage_report.outputs.duration-seconds }}
 
 permissions:
   contents: read
@@ -39,9 +31,6 @@ env:
 jobs:
   coverage_report:
     runs-on: ubuntu-24.04
-    outputs:
-      artifact-name: ${{ steps.set-artifact-name.outputs.artifact-name }}
-      duration-seconds: ${{ steps.timer.outputs.duration-seconds }}
 
     steps:
       - name: Start timer
