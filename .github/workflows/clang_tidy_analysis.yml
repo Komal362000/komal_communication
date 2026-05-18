@@ -14,12 +14,16 @@
 name: Clang-Tidy Analysis
 
 on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
   workflow_call:
     outputs:
       duration-seconds:
         description: Runtime of the clang-tidy check in seconds.
         value: ${{ jobs.clang_tidy.outputs.duration-seconds }}
-  workflow_dispatch:
 
 permissions:
   contents: read
@@ -50,13 +54,12 @@ jobs:
         with:
           level: 4
 
-      - uses: castler/setup-bazel@8818d35864b4088fb3a12e7a3191777dc418fd69
+      - uses: bazel-contrib/setup-bazel@0.18.0
         with:
           bazelisk-cache: true
           disk-cache: "clang_tidy_analysis"
           disk-cache-key: "main"
           repository-cache: true
-          cache-save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: Allow linux-sandbox
         uses: ./actions/unblock_user_namespace_for_linux_sandbox
