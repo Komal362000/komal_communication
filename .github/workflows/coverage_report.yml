@@ -13,14 +13,11 @@
 name: Coverage Report
 
 on:
-  workflow_call:
-    outputs:
-      artifact-name:
-        description: 'Name of the coverage report artifact'
-        value: ${{ jobs.coverage_report.outputs.artifact-name }}
-      duration-seconds:
-        description: Runtime of the coverage check in seconds.
-        value: ${{ jobs.coverage_report.outputs.duration-seconds }}
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -34,9 +31,6 @@ env:
 jobs:
   coverage_report:
     runs-on: ubuntu-24.04
-    outputs:
-      artifact-name: ${{ steps.set-artifact-name.outputs.artifact-name }}
-      duration-seconds: ${{ steps.timer.outputs.duration-seconds }}
 
     steps:
       - name: Start timer
@@ -63,7 +57,14 @@ jobs:
           disk-cache: "coverage_report"
           disk-cache-key: "main"
           repository-cache: true
-          cache-save: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Note cache context
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "Cache seed run on main branch; subsequent runs should restore cache." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Cache consume run; the first run after cache-key or workflow changes may miss restore once." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Allow linux-sandbox
         uses: ./actions/unblock_user_namespace_for_linux_sandbox
