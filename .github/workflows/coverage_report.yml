@@ -58,6 +58,14 @@ jobs:
           disk-cache-key: "main"
           repository-cache: true
 
+      - name: Note cache context
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "Cache seed run on main branch; subsequent runs should restore cache." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Cache consume run; the first run after cache-key or workflow changes may miss restore once." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Allow linux-sandbox
         uses: ./actions/unblock_user_namespace_for_linux_sandbox
 
