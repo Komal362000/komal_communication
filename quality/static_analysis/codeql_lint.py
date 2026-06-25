@@ -15,7 +15,6 @@ import os
 import tempfile
 import json
 import subprocess
-import random
 import datetime
 
 TMP_PATH_FOR_DATABASES = "/var/tmp/codeql_databases"
@@ -43,7 +42,7 @@ def create_database(code_ql_path, config_path, target, source_root, database_pat
 
 
 def analyze_database(code_ql_path, database_path, source_root, query_spec=None, output_prefix="codeql", output_dir=None):
-    """Run CodeQL analysis on an existing database."""
+    """Run CodeQL analysis on an existing database and generate MISRA compliance reports."""
     if output_dir:
         output_base = output_dir
         os.makedirs(output_base, exist_ok=True)
@@ -62,8 +61,168 @@ def analyze_database(code_ql_path, database_path, source_root, query_spec=None, 
         f"{code_ql_path} database analyze -j=0 {database_path}{query_arg} --format=csv --output={csv_path}",
         shell=True, check=True)
 
-    # @todo it is possible to generate here also a full MISRA compliance report, which we could do in the future.
-    # path/to/<output_database_name> <name-of-results-file>.sarif <output_directory>
+    # Automatically generate MISRA C++ compliance reports
+    generate_compliance_reports(database_path, sarif_path, source_root)
+
+
+def generate_compliance_reports(database_path, sarif_path, source_root):
+    """Generate MISRA C++ compliance reports directly from SARIF file.
+
+    Parses SARIF JSON and creates markdown reports without external dependencies.
+    """
+    reports_dir = os.path.join(source_root, "quality/static_analysis/codeql_reports")
+
+    try:
+        print(f"\n✓ Generating MISRA C++ compliance reports from SARIF analysis...")
+
+        # Create reports directory
+        os.makedirs(reports_dir, exist_ok=True)
+
+        # Parse SARIF file
+        if not os.path.exists(sarif_path):
+            print(f"⚠️  SARIF file not found at {sarif_path}")
+            return
+
+        with open(sarif_path, 'r') as f:
+            sarif_data = json.load(f)
+
+        # Extract results from SARIF
+        results_by_rule = {}
+        total_issues = 0
+
+        if "runs" in sarif_data and len(sarif_data["runs"]) > 0:
+            run = sarif_data["runs"][0]
+
+            # Collect results by rule ID
+            if "results" in run:
+                for result in run["results"]:
+                    rule_id = result.get("ruleId", "UNKNOWN")
+                    message = result.get("message", {}).get("text", "No description")
+                    severity = result.get("level", "warning")
+                    location = result.get("locations", [{}])[0].get("physicalLocation", {}).get("artifactLocation", {}).get("uri", "unknown")
+
+                    if rule_id not in results_by_rule:
+                        results_by_rule[rule_id] = []
+
+                    results_by_rule[rule_id].append({
+                        "message": message,
+                        "severity": severity,
+                        "location": location
+                    })
+                    total_issues += 1
+
+        # Generate detailed findings report
+        findings_report = os.path.join(reports_dir, "findings_report.md")
+        with open(findings_report, 'w') as f:
+            f.write("# CodeQL MISRA C++ Findings Report\n\n")
+            f.write(f"**Analysis Date:** {datetime.datetime.now().isoformat()}\n")
+            f.write(f"**Total Issues Found:** {total_issues}\n")
+            f.write(f"**Rules Triggered:** {len(results_by_rule)}\n\n")
+
+            f.write("## Issues by Rule\n\n")
+            for rule_id in sorted(results_by_rule.keys()):
+                issues = results_by_rule[rule_id]
+                f.write(f"### {rule_id} ({len(issues)} issues)\n\n")
+                for issue in issues[:10]:  # Show first 10 per rule
+                    f.write(f"- **Severity:** {issue['severity']}\n")
+                    f.write(f"  **File:** {issue['location']}\n")
+                    f.write(f"  **Message:** {issue['message']}\n\n")
+                if len(issues) > 10:
+                    f.write(f"- ... and {len(issues) - 10} more issues\n\n")
+
+        # Generate compliance summary report
+        summary_report = os.path.join(reports_dir, "guideline_compliance_summary.md")
+        with open(summary_report, 'w') as f:
+            f.write("# MISRA C++ Compliance Summary\n\n")
+            f.write(f"**Generated:** {datetime.datetime.now().isoformat()}\n\n")
+            f.write("## Analysis Results\n\n")
+            f.write(f"- **Total Issues:** {total_issues}\n")
+            f.write(f"- **Rules Triggered:** {len(results_by_rule)}\n")
+            f.write(f"- **Database Location:** {database_path}\n")
+            f.write(f"- **SARIF File:** {sarif_path}\n\n")
+
+            # Severity breakdown
+            severity_counts = {"error": 0, "warning": 0, "note": 0}
+            for issues in results_by_rule.values():
+                for issue in issues:
+                    severity = issue["severity"].lower()
+                    if severity in severity_counts:
+                        severity_counts[severity] += 1
+
+            f.write("## Severity Breakdown\n\n")
+            f.write(f"- **Errors:** {severity_counts['error']}\n")
+            f.write(f"- **Warnings:** {severity_counts['warning']}\n")
+            f.write(f"- **Notes:** {severity_counts['note']}\n\n")
+
+            if total_issues == 0:
+                f.write("✅ **Status:** COMPLIANT - No MISRA C++ violations found!\n")
+            else:
+                f.write(f"⚠️  **Status:** {total_issues} issues require review\n")
+
+            f.write(f"\n## Top Rules Triggered\n\n")
+            top_rules = sorted(results_by_rule.items(), key=lambda x: len(x[1]), reverse=True)[:5]
+            for rule_id, issues in top_rules:
+                f.write(f"- {rule_id}: {len(issues)} occurrences\n")
+
+        # Generate SARIF metadata report
+        metadata_report = os.path.join(reports_dir, "analysis_metadata.md")
+        with open(metadata_report, 'w') as f:
+            f.write("# CodeQL Analysis Metadata\n\n")
+            f.write(f"**SARIF Version:** {sarif_data.get('version', 'unknown')}\n")
+            f.write(f"**Analysis Tool:** CodeQL\n")
+            f.write(f"**Language:** C/C++\n")
+            f.write(f"**Standards:** MISRA C++ 2023\n\n")
+            f.write(f"**Reports Generated:**\n")
+            f.write(f"- Findings Report: findings_report.md\n")
+            f.write(f"- Compliance Summary: guideline_compliance_summary.md\n")
+            f.write(f"- Analysis Metadata: analysis_metadata.md\n")
+            f.write(f"- Detailed Results: codeql_analysis_results.md\n\n")
+            f.write(f"**Raw Data Files:**\n")
+            f.write(f"- SARIF: {sarif_path}\n")
+            f.write(f"- Database: {database_path}\n")
+
+        # Generate detailed results table
+        results_report = os.path.join(reports_dir, "codeql_analysis_results.md")
+        with open(results_report, 'w') as f:
+            f.write("# Detailed CodeQL Analysis Results\n\n")
+            f.write("| Rule ID | Severity | Location | Message |\n")
+            f.write("|---------|----------|----------|----------|\n")
+
+            all_issues = []
+            for rule_id, issues in results_by_rule.items():
+                for issue in issues:
+                    all_issues.append((rule_id, issue))
+
+            # Sort by severity, then rule
+            severity_order = {"error": 0, "warning": 1, "note": 2}
+            all_issues.sort(key=lambda x: (severity_order.get(x[1]["severity"].lower(), 3), x[0]))
+
+            for rule_id, issue in all_issues[:100]:  # Limit to 100 rows
+                f.write(f"| {rule_id} | {issue['severity']} | {issue['location']} | {issue['message'][:50]}... |\n")
+
+            if len(all_issues) > 100:
+                f.write(f"\n... and {len(all_issues) - 100} more results in SARIF file\n")
+
+        print(f"✓ Compliance reports generated at: {reports_dir}")
+        print(f"  - findings_report.md")
+        print(f"  - guideline_compliance_summary.md")
+        print(f"  - analysis_metadata.md")
+        print(f"  - codeql_analysis_results.md")
+
+        # Display summary
+        with open(summary_report, 'r') as f:
+            lines = f.readlines()
+            print("\n" + "="*60)
+            for line in lines[:20]:
+                print(line.rstrip())
+            print("="*60 + "\n")
+
+    except Exception as e:
+        print(f"⚠️  Error generating compliance reports: {e}")
+        import traceback
+        traceback.print_exc()
+        print("   Database and SARIF analysis completed successfully")
+
 
 
 def main():
