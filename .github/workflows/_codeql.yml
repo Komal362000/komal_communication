@@ -68,3 +68,12 @@ jobs:
           name: codeql-csv-results
           path: /tmp/codeql-results/codeql-nightly.csv
           retention-days: 30
+
+      - name: Upload MISRA compliance reports
+        if: inputs.fetch-only != 'true' && always() && steps.run-codeql.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: codeql-misra-reports
+          path: /tmp/codeql-results/analysis_reports/*.md
+          retention-days: 30
+          if-no-files-found: warn
