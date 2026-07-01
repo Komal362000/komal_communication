@@ -162,6 +162,31 @@ jobs:
           fi
 
       # ------------------------------------------------------------------
+      # Download CodeQL MISRA compliance reports artifact
+      # ------------------------------------------------------------------
+      - name: Download CodeQL MISRA reports artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: codeql-misra-reports
+          path: /tmp/codeql_reports
+
+      - name: Copy CodeQL MISRA reports into quality output
+        if: always()
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/_quality/codeql"
+          for report in database_integrity_report.md deviations_report.md \
+                        guideline_compliance_summary.md guideline_recategorizations_report.md; do
+            if [[ -f "/tmp/codeql_reports/$report" ]]; then
+              cp "/tmp/codeql_reports/$report" \
+                 "${GITHUB_WORKSPACE}/_quality/codeql/$report"
+            else
+              echo "::warning::$report not found in downloaded artifact; skipping."
+            fi
+          done
+
+      # ------------------------------------------------------------------
       # Generate coverage KPI dashboard via generate_dashboard py_binary
       # ------------------------------------------------------------------
       - name: Generate quality dashboard
