@@ -60,7 +60,7 @@ jobs:
   run-clang-tidy:
     uses: ./.github/workflows/clang_tidy.yml
     permissions:
-      contents: read    
+      contents: read
       actions: write
 
   # --------------------------------------------------------------------
@@ -165,6 +165,34 @@ jobs:
           else
             echo "::warning::codeql-nightly.csv not found; skipping copy."
           fi
+
+      # ------------------------------------------------------------------
+      # Download CodeQL MISRA compliance reports (4 markdown files)
+      # ------------------------------------------------------------------
+      - name: Download CodeQL MISRA reports artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.run-codeql.outputs.reports-artifact-name }}
+          path: /tmp/codeql-reports
+
+      - name: Copy CodeQL MISRA reports into quality output
+        if: always()
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/_quality/codeql"
+          copied=0
+          for report in database_integrity_report deviations_report \
+                        guideline_compliance_summary guideline_recategorizations_report; do
+            if [[ -f "/tmp/codeql-reports/${report}.md" ]]; then
+              cp "/tmp/codeql-reports/${report}.md" \
+                 "${GITHUB_WORKSPACE}/_quality/codeql/${report}.md"
+              copied=$((copied + 1))
+            else
+              echo "::warning::${report}.md not found; skipping copy."
+            fi
+          done
+          echo "Copied ${copied} CodeQL MISRA report(s) into _quality/codeql/."
 
       # ------------------------------------------------------------------
       # Generate coverage KPI dashboard via generate_dashboard py_binary
