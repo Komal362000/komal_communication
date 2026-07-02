@@ -54,6 +54,14 @@ jobs:
             --output-prefix codeql-nightly \
             --target //score/message_passing //score/mw/com
 
+      - name: Debug - Show analysis_reports directory
+        if: always()
+        run: |
+          echo "Contents of /tmp/codeql-results/analysis_reports/:"
+          find /tmp/codeql-results/analysis_reports -type f 2>/dev/null | sort || echo "Directory not found"
+          echo "---"
+          echo "Count: $(find /tmp/codeql-results/analysis_reports -type f 2>/dev/null | wc -l) files"
+
       - name: Upload SARIF to GitHub Code Scanning
         if: inputs.fetch-only != 'true' && always() && steps.run-codeql.outcome == 'success'
         uses: github/codeql-action/upload-sarif@v4
