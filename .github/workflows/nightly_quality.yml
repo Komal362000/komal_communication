@@ -157,9 +157,30 @@ jobs:
           if [[ -f /tmp/codeql/codeql-nightly.csv ]]; then
             cp /tmp/codeql/codeql-nightly.csv \
                "${GITHUB_WORKSPACE}/_quality/codeql_findings.txt"
-          else
-            echo "::warning::codeql-nightly.csv not found; skipping copy."
           fi
+
+      # ------------------------------------------------------------------
+      # Download CodeQL MISRA compliance reports artifact
+      # ------------------------------------------------------------------
+      - name: Download CodeQL MISRA reports artifact
+        if: always()
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: codeql-misra-reports
+          path: /tmp/codeql_reports
+
+      - name: Copy CodeQL MISRA reports into quality output
+        if: always()
+        run: |
+          mkdir -p "${GITHUB_WORKSPACE}/_quality/codeql"
+          # Find all .md files recursively (handles both flat and nested layouts)
+          find /tmp/codeql_reports -name '*.md' -type f | while read -r src; do
+            filename=$(basename "$src")
+            cp "$src" "${GITHUB_WORKSPACE}/_quality/codeql/$filename"
+          done
+          echo "Files in _quality/codeql/:"
+          ls -la "${GITHUB_WORKSPACE}/_quality/codeql/" 2>/dev/null || echo "No files found"
 
       # ------------------------------------------------------------------
       # Generate coverage KPI dashboard via generate_dashboard py_binary
@@ -176,9 +197,6 @@ jobs:
             --html     "${GITHUB_WORKSPACE}/_quality/index.html" \
             --github-summary
 
-          echo "Dashboard generated. Contents of _quality/:"
-          find "${GITHUB_WORKSPACE}/_quality" -type f | sort
-
       # ------------------------------------------------------------------
       # Upload all quality reports as a single artifact for docs.yml to
       # pick up and deploy as part of the unified Sphinx site.
@@ -190,6 +208,14 @@ jobs:
           name: nightly-quality-reports
           path: _quality/
           retention-days: 7
+
+      - name: Debug - Show final artifact contents
+        if: always()
+        run: |
+          echo "Final _quality/ directory structure:"
+          find "${GITHUB_WORKSPACE}/_quality" -type f | sort
+          echo "---"
+          echo "Total files: $(find "${GITHUB_WORKSPACE}/_quality" -type f | wc -l)"
 
       - name: Print dashboard URL
         if: always()

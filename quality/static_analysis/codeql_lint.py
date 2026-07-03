@@ -107,23 +107,42 @@ def analyze_database(code_ql_path, database_path, source_root, analysis_report_p
                  reports_output_dir],
                 capture_output=True, text=True, env=env)
 
-            # Check if reports were generated even if there was an error
-            # (analysis_report writes files before failing on some post-processing)
+            # Always show subprocess output for diagnostics
+            if result.stdout:
+                print(f"  [analysis_report stdout]: {result.stdout.strip()}")
+            if result.stderr:
+                print(f"  [analysis_report stderr]: {result.stderr.strip()}")
+
+            expected_reports = [
+                "database_integrity_report.md",
+                "deviations_report.md",
+                "guideline_compliance_summary.md",
+                "guideline_recategorizations_report.md",
+            ]
+
             if os.path.exists(reports_output_dir):
-                report_files = glob.glob(os.path.join(reports_output_dir, "*"))
-                if report_files:
-                    print(f"✓ Reports generated successfully")
-                    print(f"\n  Generated Report Files:")
-                    for f in sorted(report_files):
-                        file_size = os.path.getsize(f) / 1024  # KB
-                        print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
-                else:
-                    # If no files, raise the error
-                    result.check_returncode()
+                report_files = glob.glob(os.path.join(reports_output_dir, "*.md"))
+                generated = [os.path.basename(f) for f in report_files]
+                missing = [r for r in expected_reports if r not in generated]
+
+                if not missing:
+                    print(f"✓ All {len(expected_reports)} reports generated successfully")
+                elif generated:
+                    print(f"  Partial report generation: {len(generated)}/{len(expected_reports)} reports")
+                    for r in missing:
+                        print(f"    ✗ MISSING: {r}")
+
+                print(f"\n  Generated Report Files:")
+                for f in sorted(report_files):
+                    file_size = os.path.getsize(f) / 1024  # KB
+                    print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
+
+                if result.returncode != 0:
+                    print(f"    analysis_report exited with code {result.returncode}")
             else:
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
-            print(f"⚠️  Report generation warning: {e.stderr if e.stderr else e}")
+            print(f"⚠️  Report generation failed: {e.stderr if e.stderr else e}")
     else:
         print(" Report generation skipped (analysis_report tool not available)")
 
