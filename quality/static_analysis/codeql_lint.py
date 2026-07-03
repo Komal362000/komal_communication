@@ -84,14 +84,47 @@ def analyze_database(code_ql_path, database_path, source_root, analysis_report_p
             env = os.environ.copy()
             # codeql_cli is a symlink to the actual codeql binary
             # Resolve the symlink to get the real directory
+            codeql_bin_dir = None
             try:
-                real_codeql_path = os.path.realpath(code_ql_path)
-                codeql_bin_dir = os.path.dirname(real_codeql_path)
-            except:
-                codeql_bin_dir = os.path.dirname(os.path.abspath(code_ql_path))
+                if os.path.exists(code_ql_path):
+                    real_codeql_path = os.path.realpath(code_ql_path)
+                    codeql_bin_dir = os.path.dirname(real_codeql_path)
+            except Exception as e:
+                print(f"    Warning: Could not resolve codeql path '{code_ql_path}': {e}")
 
-            # Prepend codeql directory to PATH
-            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+            # If resolution failed, try absolute path
+            if not codeql_bin_dir:
+                abs_path = os.path.abspath(code_ql_path)
+                if os.path.exists(abs_path):
+                    codeql_bin_dir = os.path.dirname(abs_path)
+
+            # If still no directory, create a wrapper approach: add codeql_path parent to PATH
+            if not codeql_bin_dir:
+                codeql_bin_dir = os.path.dirname(os.path.abspath(code_ql_path))
+                print(f"    Info: Using codeql directory: {codeql_bin_dir}")
+
+            # Also try to create a symlink to codeql in a temporary location for reliable PATH resolution
+            temp_bin_dir = os.path.join(output_base, ".codeql_bin")
+            try:
+                os.makedirs(temp_bin_dir, exist_ok=True)
+                codeql_link = os.path.join(temp_bin_dir, "codeql")
+                # Only create if doesn't exist and source exists
+                if not os.path.exists(codeql_link) and os.path.exists(code_ql_path):
+                    try:
+                        os.symlink(os.path.abspath(code_ql_path), codeql_link)
+                        temp_bin_dir_primary = True
+                    except:
+                        temp_bin_dir_primary = False
+                else:
+                    temp_bin_dir_primary = os.path.exists(codeql_link)
+            except:
+                temp_bin_dir_primary = False
+
+            # Prepend codeql directory to PATH (try temp link dir first if available)
+            if temp_bin_dir_primary:
+                env["PATH"] = f"{temp_bin_dir}:{codeql_bin_dir}:{env.get('PATH', '')}"
+            else:
+                env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
@@ -128,18 +161,26 @@ def analyze_database(code_ql_path, database_path, source_root, analysis_report_p
                 if not missing:
                     print(f"✓ All {len(expected_reports)} reports generated successfully")
                 elif generated:
-                    print(f"  Partial report generation: {len(generated)}/{len(expected_reports)} reports")
+                    print(f"  ⚠️  Partial report generation: {len(generated)}/{len(expected_reports)} reports")
+                    print(f"  Generated: {', '.join(generated)}")
+                    print(f"  Missing:")
                     for r in missing:
-                        print(f"    ✗ MISSING: {r}")
+                        print(f"    ✗ {r}")
 
-                print(f"\n  Generated Report Files:")
-                for f in sorted(report_files):
-                    file_size = os.path.getsize(f) / 1024  # KB
-                    print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
+                if report_files:
+                    print(f"\n  Generated Report Files:")
+                    for f in sorted(report_files):
+                        file_size = os.path.getsize(f) / 1024  # KB
+                        print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
 
                 if result.returncode != 0:
-                    print(f"    analysis_report exited with code {result.returncode}")
+                    print(f"  ⚠️  analysis_report exited with code {result.returncode}")
+                    if not generated:
+                        print(f"  ERROR: No reports generated. Check stdout/stderr above for details.")
+                        result.check_returncode()
             else:
+                if result.returncode == 0 and not os.path.exists(reports_output_dir):
+                    print(f"  ERROR: Reports output directory was not created even though process succeeded")
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
             print(f"⚠️  Report generation failed: {e.stderr if e.stderr else e}")
