@@ -32,10 +32,12 @@ import pathlib
 import sys
 from datetime import datetime, timezone
 
+from markdown_it import MarkdownIt
 from jinja2 import Environment, FileSystemLoader
 from markupsafe import Markup
 
 _TEMPLATE_DIR = pathlib.Path(__file__).parent
+_MARKDOWN_RENDERER = MarkdownIt('commonmark').enable('table')
 
 
 # ── Template helpers ──────────────────────────────────────────────────────────
@@ -57,6 +59,10 @@ def _delta_badge(curr, prev, higher_is_better: bool) -> Markup:
     sym = "↓" if diff < 0 else "↑"
     fmt = f"{abs(diff):.1f}" if abs(diff) != int(abs(diff)) else str(int(abs(diff)))
     return Markup(f'<span class="{cls}">{sym}{fmt}</span>')
+
+
+def _render_markdown(markdown_text: str) -> Markup:
+    return Markup(_MARKDOWN_RENDERER.render(markdown_text))
 
 
 # ── Data parsers ──────────────────────────────────────────────────────────────
@@ -237,13 +243,19 @@ def render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timest
     env.filters["basename"]   = lambda p: pathlib.Path(p).name or p
     env.tests["number"]       = lambda x: isinstance(x, (int, float)) and x is not None
     tmpl = env.get_template("dashboard.html.j2")
+    rendered_codeql_reports = None
+    if codeql_reports:
+        rendered_codeql_reports = {
+            name: _render_markdown(content)
+            for name, content in codeql_reports.items()
+        }
     return tmpl.render(
         timestamp=timestamp,
         cov=cov_summary or None,
         cov_files=cov_files,
         clang_tidy=clang_tidy,
         codeql=codeql,
-        codeql_reports=codeql_reports,
+        codeql_reports=rendered_codeql_reports,
         history=history,
         prev=history[-2] if len(history) >= 2 else None,
     )
