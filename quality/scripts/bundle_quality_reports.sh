@@ -29,6 +29,7 @@ EVENT_NAME="${1:?event_name required}"
 WORKFLOW_RUN_ID="${2:-}"
 REPOSITORY="${3:?repository required}"
 PUBLISH_DIR="${4:-publish/latest/quality}"
+CODEQL_REPORTS_DIR="${PUBLISH_DIR}/codeql"
 
 EXPECTED_CODEQL_REPORTS=(
     database_integrity_report.md
@@ -79,6 +80,7 @@ restore_report_from_previous_run() {
 }
 
 mkdir -p "${PUBLISH_DIR}"
+mkdir -p "${CODEQL_REPORTS_DIR}"
 
 if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
     # Triggered by nightly — download the fresh artifact directly.
@@ -122,7 +124,7 @@ if [[ -n "${RUN_ID}" ]]; then
                 --jq '.workflow_runs[].id' 2>/dev/null || true)
 
             for report_name in "${EXPECTED_CODEQL_REPORTS[@]}"; do
-                report_path="${PUBLISH_DIR}/${report_name}"
+                report_path="${CODEQL_REPORTS_DIR}/${report_name}"
                 if [[ -f "${report_path}" ]] && ! is_placeholder_report "${report_path}"; then
                     continue
                 fi
