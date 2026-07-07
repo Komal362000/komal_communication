@@ -189,24 +189,6 @@ jobs:
             done
           fi
 
-          # Ensure all 4 expected reports exist — create placeholders for any
-          # that the analysis_report tool did not generate. This prevents 404
-          # errors on GitHub Pages for reports with longer filenames.
-          for report in database_integrity_report deviations_report \
-                        guideline_compliance_summary guideline_recategorizations_report; do
-            if [ ! -f "${GITHUB_WORKSPACE}/_quality/codeql/${report}.md" ]; then
-              TITLE=$(echo "$report" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
-              cat > "${GITHUB_WORKSPACE}/_quality/codeql/${report}.md" <<EOF
-          # ${TITLE}
-
-          > Report not yet available — will be generated on the next successful CodeQL nightly run.
-
-          This report is expected to be produced by the \`analysis_report\` tool as part of
-          the MISRA C++ compliance analysis pipeline.
-          EOF
-            fi
-          done
-
           echo "Files in _quality/codeql/:"
           ls -la "${GITHUB_WORKSPACE}/_quality/codeql/" 2>/dev/null || echo "No files found"
 
