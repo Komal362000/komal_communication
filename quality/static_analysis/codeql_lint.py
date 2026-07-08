@@ -50,7 +50,16 @@ def create_database(code_ql_path, config_path, target, source_root, database_pat
     subprocess.run(f"{code_ql_path} database finalize -j=0 -- {database_path}", shell=True, check=True)
 
 
-def analyze_database(code_ql_path, database_path, source_root, analysis_report_path=None, query_spec=None, output_prefix="codeql", output_dir=None):
+def analyze_database(
+    code_ql_path,
+    database_path,
+    source_root,
+    analysis_report_path=None,
+    query_spec=None,
+    output_prefix="codeql",
+    output_dir=None,
+    require_all_reports=False,
+):
     """Run CodeQL analysis and generate MISRA C++ compliance reports."""
     output_base = output_dir or _get_bazel_info(source_root).get('output_path')
     os.makedirs(output_base, exist_ok=True)
@@ -168,6 +177,11 @@ def analyze_database(code_ql_path, database_path, source_root, analysis_report_p
                     print(f"  Missing:")
                     for r in missing:
                         print(f"    ✗ {r}")
+                    if require_all_reports:
+                        raise RuntimeError(
+                            "analysis_report did not generate all expected reports: "
+                            + ", ".join(missing)
+                        )
 
                 if report_files:
                     print(f"\n  Generated Report Files:")
@@ -202,6 +216,11 @@ def main():
     parser.add_argument("--query-spec", help="CodeQL query spec")
     parser.add_argument("--output-prefix", default="codeql", help="Output prefix")
     parser.add_argument("--output-dir", help="Output directory")
+    parser.add_argument(
+        "--require-all-reports",
+        action="store_true",
+        help="Fail if any expected MISRA markdown report is missing",
+    )
 
     args = parser.parse_args()
     target = " ".join(args.target) if args.target else ""
@@ -218,7 +237,8 @@ def main():
         analyze_database(codeql_path, args.database_path, source_root,
                         analysis_report_path=args.analysis_report_path,
                         query_spec=args.query_spec, output_prefix=args.output_prefix,
-                        output_dir=args.output_dir)
+                        output_dir=args.output_dir,
+                        require_all_reports=args.require_all_reports)
 
     else:  # all
         # Use standard Bazel output directory for database
@@ -234,7 +254,8 @@ def main():
             analyze_database(codeql_path, database_location, source_root,
                            analysis_report_path=args.analysis_report_path,
                            query_spec=args.query_spec, output_prefix=args.output_prefix,
-                           output_dir=args.output_dir)
+                           output_dir=args.output_dir,
+                           require_all_reports=args.require_all_reports)
             print(f"  Use this database for future report generation")
 
 
