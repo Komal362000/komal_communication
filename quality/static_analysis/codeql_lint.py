@@ -98,49 +98,8 @@ def analyze_database(
 
             # Prepare environment with CodeQL binary path
             env = os.environ.copy()
-            # codeql_cli is a symlink to the actual codeql binary
-            # Resolve the symlink to get the real directory
-            codeql_bin_dir = None
-            try:
-                if os.path.exists(code_ql_path):
-                    real_codeql_path = os.path.realpath(code_ql_path)
-                    codeql_bin_dir = os.path.dirname(real_codeql_path)
-            except Exception as e:
-                print(f"    Warning: Could not resolve codeql path '{code_ql_path}': {e}")
-
-            # If resolution failed, try absolute path
-            if not codeql_bin_dir:
-                abs_path = os.path.abspath(code_ql_path)
-                if os.path.exists(abs_path):
-                    codeql_bin_dir = os.path.dirname(abs_path)
-
-            # If still no directory, create a wrapper approach: add codeql_path parent to PATH
-            if not codeql_bin_dir:
-                codeql_bin_dir = os.path.dirname(os.path.abspath(code_ql_path))
-                print(f"    Info: Using codeql directory: {codeql_bin_dir}")
-
-            # Also try to create a symlink to codeql in a temporary location for reliable PATH resolution
-            temp_bin_dir = os.path.join(output_base, ".codeql_bin")
-            try:
-                os.makedirs(temp_bin_dir, exist_ok=True)
-                codeql_link = os.path.join(temp_bin_dir, "codeql")
-                # Only create if doesn't exist and source exists
-                if not os.path.exists(codeql_link) and os.path.exists(code_ql_path):
-                    try:
-                        os.symlink(os.path.abspath(code_ql_path), codeql_link)
-                        temp_bin_dir_primary = True
-                    except:
-                        temp_bin_dir_primary = False
-                else:
-                    temp_bin_dir_primary = os.path.exists(codeql_link)
-            except:
-                temp_bin_dir_primary = False
-
-            # Prepend codeql directory to PATH (try temp link dir first if available)
-            if temp_bin_dir_primary:
-                env["PATH"] = f"{temp_bin_dir}:{codeql_bin_dir}:{env.get('PATH', '')}"
-            else:
-                env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
