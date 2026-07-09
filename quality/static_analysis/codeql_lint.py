@@ -21,6 +21,12 @@ import glob
 
 
 TMP_PATH_FOR_DATABASES = "/var/tmp/codeql_databases"
+EXPECTED_REPORTS = [
+    "database_integrity_report.md",
+    "deviations_report.md",
+    "guideline_compliance_summary.md",
+    "guideline_recategorizations_report.md",
+]
 
 def create_database(code_ql_path, config_path, target, source_root, database_path):
     """Create the CodeQL database: init, build with tracing, finalize."""
@@ -153,34 +159,20 @@ def analyze_database(
             # Always show subprocess output for diagnostics
             if result.stdout:
                 print(f"  [analysis_report stdout]: {result.stdout.strip()}")
-            if result.stderr:
-                print(f"  [analysis_report stderr]: {result.stderr.strip()}")
-
-            expected_reports = [
-                "database_integrity_report.md",
-                "deviations_report.md",
-                "guideline_compliance_summary.md",
-                "guideline_recategorizations_report.md",
-            ]
 
             if os.path.exists(reports_output_dir):
-                report_files = glob.glob(os.path.join(reports_output_dir, "*.md"))
-                generated = [os.path.basename(f) for f in report_files]
-                missing = [r for r in expected_reports if r not in generated]
+                report_files, generated, missing, reports_complete = _collect_report_generation_status(
+                    reports_output_dir
+                )
 
-                if not missing:
-                    print(f"✓ All {len(expected_reports)} reports generated successfully")
+                if reports_complete:
+                    print(f"✓ All {len(EXPECTED_REPORTS)} reports generated successfully")
                 elif generated:
-                    print(f"  ⚠️  Partial report generation: {len(generated)}/{len(expected_reports)} reports")
+                    print(f"  ⚠️  Partial report generation: {len(generated)}/{len(EXPECTED_REPORTS)} reports")
                     print(f"  Generated: {', '.join(generated)}")
                     print(f"  Missing:")
                     for r in missing:
                         print(f"    ✗ {r}")
-                    if require_all_reports:
-                        raise RuntimeError(
-                            "analysis_report did not generate all expected reports: "
-                            + ", ".join(missing)
-                        )
 
                 if report_files:
                     print(f"\n  Generated Report Files:")
@@ -189,13 +181,29 @@ def analyze_database(
                         print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
 
                 if result.returncode != 0:
-                    print(f"  ⚠️  analysis_report exited with code {result.returncode}")
-                    if not generated:
-                        print(f"  ERROR: No reports generated. Check stdout/stderr above for details.")
-                        result.check_returncode()
+                    if reports_complete:
+                        print(f"  ⚠️  analysis_report exited with code {result.returncode} after writing all expected reports")
+                        print("  NOTE: Upstream analysis_report raises a KeyError in its summary formatter for MISRA runs.")
+                    else:
+                        if result.stderr:
+                            print(f"  [analysis_report stderr]: {result.stderr.strip()}")
+                        print(f"  ⚠️  analysis_report exited with code {result.returncode}")
+                        if not generated:
+                            print(f"  ERROR: No reports generated. Check stdout/stderr above for details.")
+                            result.check_returncode()
+
+                if require_all_reports and missing:
+                    raise RuntimeError(
+                        "analysis_report did not generate all expected reports: "
+                        + ", ".join(missing)
+                    )
             else:
+                if result.stderr:
+                    print(f"  [analysis_report stderr]: {result.stderr.strip()}")
                 if result.returncode == 0 and not os.path.exists(reports_output_dir):
                     print(f"  ERROR: Reports output directory was not created even though process succeeded")
+                if require_all_reports:
+                    raise RuntimeError("analysis_report did not create the reports output directory")
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
             print(f"⚠️  Report generation failed: {e.stderr if e.stderr else e}")
@@ -289,6 +297,14 @@ def _get_bazel_info(source_root):
             key, value = line.split(':', 1)
             bazel_info[key.strip()] = value.strip()
     return bazel_info
+
+
+def _collect_report_generation_status(reports_output_dir):
+    report_files = sorted(glob.glob(os.path.join(reports_output_dir, "*.md")))
+    generated = [os.path.basename(f) for f in report_files]
+    missing = [report for report in EXPECTED_REPORTS if report not in generated]
+    reports_complete = not missing and len(generated) == len(EXPECTED_REPORTS)
+    return report_files, generated, missing, reports_complete
 
 
 if __name__ == "__main__":
