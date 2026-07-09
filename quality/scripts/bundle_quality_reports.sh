@@ -31,54 +31,6 @@ REPOSITORY="${3:?repository required}"
 PUBLISH_DIR="${4:-publish/latest/quality}"
 CODEQL_REPORTS_DIR="${PUBLISH_DIR}/codeql"
 
-EXPECTED_CODEQL_REPORTS=(
-    database_integrity_report.md
-    deviations_report.md
-    guideline_compliance_summary.md
-    guideline_recategorizations_report.md
-)
-
-is_placeholder_report() {
-    local report_path="${1}"
-    grep -Fq "Report not yet available" "${report_path}"
-}
-
-download_run_artifact() {
-    local run_id="${1}"
-    local destination_dir="${2}"
-
-    gh run download "${run_id}" \
-        --name nightly-quality-reports \
-        --dir "${destination_dir}" \
-        --repo "${REPOSITORY}"
-}
-
-restore_report_from_previous_run() {
-    local report_name="${1}"
-    local target_path="${2}"
-    local candidate_run_ids="${3}"
-
-    for candidate_run_id in ${candidate_run_ids}; do
-        [[ "${candidate_run_id}" == "${RUN_ID}" ]] && continue
-
-        local fallback_dir
-        fallback_dir=$(mktemp -d)
-        if download_run_artifact "${candidate_run_id}" "${fallback_dir}" >/dev/null 2>&1; then
-            local fallback_report
-            fallback_report=$(find "${fallback_dir}" -name "${report_name}" -type f -print -quit 2>/dev/null || true)
-            if [[ -n "${fallback_report}" ]] && ! is_placeholder_report "${fallback_report}"; then
-                cp "${fallback_report}" "${target_path}"
-                echo "Restored ${report_name} from nightly run ${candidate_run_id}"
-                rm -rf "${fallback_dir}"
-                return 0
-            fi
-        fi
-        rm -rf "${fallback_dir}"
-    done
-
-    return 1
-}
-
 mkdir -p "${PUBLISH_DIR}"
 mkdir -p "${CODEQL_REPORTS_DIR}"
 
@@ -116,33 +68,6 @@ if [[ -n "${RUN_ID}" ]]; then
             echo "Quality reports bundled into ${PUBLISH_DIR}/"
         else
             echo "::warning::Quality artifact downloaded but no files found — skipping."
-        fi
-
-        if [[ "${EVENT_NAME}" == "workflow_run" ]]; then
-            FALLBACK_RUN_IDS=$(gh api \
-                "repos/${REPOSITORY}/actions/workflows/nightly_quality.yml/runs?status=success&per_page=20" \
-                --jq '.workflow_runs[].id' 2>/dev/null || true)
-
-            for report_name in "${EXPECTED_CODEQL_REPORTS[@]}"; do
-                report_path="${CODEQL_REPORTS_DIR}/${report_name}"
-                if [[ -f "${report_path}" ]] && ! is_placeholder_report "${report_path}"; then
-                    continue
-                fi
-
-                if restore_report_from_previous_run "${report_name}" "${report_path}" "${FALLBACK_RUN_IDS}"; then
-                    continue
-                fi
-
-                title=$(echo "${report_name%.md}" | sed 's/_/ /g' | sed 's/\b\(.\)/\u\1/g')
-                cat > "${report_path}" <<EOF
-# ${title}
-
-> Report not yet available — will be generated on the next successful CodeQL nightly run.
-
-This report is expected to be produced by the analysis_report tool as part of
-the MISRA C++ compliance analysis pipeline.
-EOF
-            done
         fi
     else
         echo "Quality artifact not available for run ${RUN_ID} — skipping."
