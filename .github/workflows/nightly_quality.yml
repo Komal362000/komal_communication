@@ -48,6 +48,8 @@ jobs:
   # --------------------------------------------------------------------
   run-coverage:
     uses: ./.github/workflows/_coverage_report.yml
+    with:
+      cache-mode: "update-disk"
     permissions:
       contents: read
       actions: write
@@ -59,6 +61,8 @@ jobs:
   # --------------------------------------------------------------------
   run-clang-tidy:
     uses: ./.github/workflows/_clang_tidy.yml
+    with:
+      cache-mode: "update-disk"
     permissions:
       contents: read
       actions: write
@@ -70,6 +74,8 @@ jobs:
   # --------------------------------------------------------------------
   run-codeql:
     uses: ./.github/workflows/_codeql.yml
+    with:
+      cache-mode: "update-disk"
     permissions:
       contents: read
       actions: write
@@ -97,6 +103,7 @@ jobs:
         uses: ./.github/actions/00_infrastructure/prepare_bazel_environment
         with:
           disk-cache: ""
+          cache-mode: "update-disk"
           ubuntu-snapshot-mirror-url: ${{ secrets.UBUNTU_SNAPSHOT_MIRROR_URL }}
 
       - name: Allow linux-sandbox
