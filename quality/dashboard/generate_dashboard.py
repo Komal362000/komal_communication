@@ -20,6 +20,7 @@ Usage (CI, called from nightly_quality.yml):
     bazel run //quality/dashboard:generate_dashboard -- \\
         --lcov           /tmp/coverage_zip/extracted/artifacts/coverage_report.dat \\
         --clang-tidy     /tmp/clang_tidy/clang_tidy_findings.txt \\
+    --codeql-csv     /tmp/codeql-results/codeql-nightly.csv \\
         --html           _quality/index.html \\
         --github-summary
 """
@@ -201,27 +202,6 @@ def load_history(path: pathlib.Path) -> list[dict]:
         return []
 
 
-def load_codeql_reports(reports_dir: pathlib.Path) -> dict[str, str] | None:
-    """Load CodeQL MISRA .md report files from a directory.
-
-    Returns a dict mapping report name to markdown content, or None if no reports found.
-    """
-    if not reports_dir or not reports_dir.is_dir():
-        return None
-    reports = {}
-    expected = [
-        "database_integrity_report",
-        "deviations_report",
-        "guideline_compliance_summary",
-        "guideline_recategorizations_report",
-    ]
-    for name in expected:
-        md_file = reports_dir / f"{name}.md"
-        if md_file.is_file():
-            reports[name] = md_file.read_text(encoding="utf-8", errors="replace")
-    return reports if reports else None
-
-
 def save_history(path: pathlib.Path, history: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(history, indent=2), encoding="utf-8")
@@ -230,7 +210,7 @@ def save_history(path: pathlib.Path, history: list[dict]) -> None:
 
 # ── HTML rendering ────────────────────────────────────────────────────────────
 
-def render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timestamp, codeql_reports=None) -> str:
+def render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timestamp) -> str:
     env = Environment(loader=FileSystemLoader(str(_TEMPLATE_DIR)), autoescape=True)
     env.globals["cov_colour"] = _cov_colour
     env.globals["delta"]      = _delta_badge
@@ -243,7 +223,6 @@ def render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timest
         cov_files=cov_files,
         clang_tidy=clang_tidy,
         codeql=codeql,
-        codeql_reports=codeql_reports,
         history=history,
         prev=history[-2] if len(history) >= 2 else None,
     )
@@ -344,11 +323,6 @@ def main() -> int:
         help="Path to CodeQL CSV results file",
     )
     parser.add_argument(
-        "--codeql-reports-dir", default="",
-        dest="codeql_reports_dir",
-        help="Path to directory containing CodeQL MISRA .md report files",
-    )
-    parser.add_argument(
         "--html", default="dashboard.html",
         help="Output HTML dashboard path",
     )
@@ -365,7 +339,6 @@ def main() -> int:
     lcov_path      = pathlib.Path(args.lcov)       if args.lcov       else pathlib.Path("")
     ct_path        = pathlib.Path(args.clang_tidy) if args.clang_tidy else pathlib.Path("")
     codeql_path    = pathlib.Path(args.codeql_csv) if args.codeql_csv else pathlib.Path("")
-    codeql_reports_path = pathlib.Path(args.codeql_reports_dir) if args.codeql_reports_dir else None
     html_path      = pathlib.Path(args.html)
     hist_path      = pathlib.Path(args.history)    if args.history    else None
 
@@ -374,7 +347,6 @@ def main() -> int:
     cov_summary, cov_files = load_lcov(lcov_path)
     clang_tidy = load_clang_tidy(ct_path)
     codeql = load_codeql_csv(codeql_path)
-    codeql_reports = load_codeql_reports(codeql_reports_path) if codeql_reports_path else None
     timestamp = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     history = load_history(hist_path) if hist_path else []
@@ -394,7 +366,7 @@ def main() -> int:
         save_history(hist_path, history)
 
     html_path.write_text(
-        render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timestamp, codeql_reports),
+        render_dashboard(cov_summary, cov_files, clang_tidy, codeql, history, timestamp),
         encoding="utf-8",
     )
 

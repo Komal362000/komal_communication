@@ -204,7 +204,6 @@ jobs:
             --lcov     /tmp/coverage_zip/extracted/artifacts/coverage_report.dat \
             --clang-tidy /tmp/clang_tidy/clang_tidy_findings.txt \
             --codeql-csv "${GITHUB_WORKSPACE}/_quality/codeql_findings.txt" \
-            --codeql-reports-dir "${GITHUB_WORKSPACE}/_quality/codeql" \
             --html     "${GITHUB_WORKSPACE}/_quality/index.html" \
             --github-summary
 

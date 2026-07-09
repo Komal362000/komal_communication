@@ -17,7 +17,6 @@ import json
 import subprocess
 import datetime
 import shutil
-import time
 import glob
 
 
