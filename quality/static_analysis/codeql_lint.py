@@ -101,6 +101,22 @@ def analyze_database(
             codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
 
+            # Install CodeQL pack dependencies required by the deviation queries.
+            # Without this, `codeql database run-queries` fails because it cannot
+            # resolve codeql/cpp-all and other pack dependencies.
+            pack_root = os.path.join(
+                os.path.dirname(os.path.realpath(analysis_report_path)),
+                "..", "..", "cpp", "common", "src")
+            if os.path.isdir(pack_root):
+                print("  Installing CodeQL pack dependencies...")
+                pack_install = subprocess.run(
+                    [os.path.join(codeql_bin_dir, "codeql"), "pack", "install", pack_root],
+                    capture_output=True, text=True, env=env)
+                if pack_install.returncode != 0:
+                    print(f"  ⚠️  Pack install failed: {pack_install.stderr.strip()}")
+                else:
+                    print("  ✓ CodeQL pack dependencies installed")
+
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
 
