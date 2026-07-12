@@ -106,9 +106,9 @@ const LolaServiceInstanceDeployment kLolaServiceInstanceDeploymentWithMethods{
     LolaServiceInstanceId{kLolaInstanceId},
     {},
     {},
-    {{kDummyMethodName0, LolaMethodInstanceDeployment{kDummyQueueSize0}},
-     {kDummyMethodName1, LolaMethodInstanceDeployment{kDummyQueueSize1}},
-     {kDummyMethodName2, LolaMethodInstanceDeployment{kDummyQueueSize2}}}};
+    {{kDummyMethodName0, LolaMethodInstanceDeployment{kDummyQueueSize0, true}},
+     {kDummyMethodName1, LolaMethodInstanceDeployment{kDummyQueueSize1, true}},
+     {kDummyMethodName2, LolaMethodInstanceDeployment{kDummyQueueSize2, true}}}};
 const LolaServiceTypeDeployment kLolaServiceTypeDeploymentWithMethods{
     kLolaServiceId,
     {},
@@ -489,7 +489,7 @@ TEST_F(ProxyMethodHandlingFixture, FieldMethodsAreCreatedInShmOnlyForEnabledComb
                                      Pair(UniqueMethodIdentifier{kDummyFieldId2, MethodType::kSet}, _)));
 }
 
-TEST_F(ProxyMethodHandlingFixture, FieldGetNotRegisteredDoesAbort)
+TEST_F(ProxyMethodHandlingFixture, FieldMethodGetEnabledInConfigurationWhichIsNotCreatedInShmTerminates)
 {
     // Given a field whose Get and Set are enabled in config, but only the Set was registered (Get unregistered
     // showcasing a programming bug).
@@ -509,7 +509,7 @@ TEST_F(ProxyMethodHandlingFixture, FieldGetNotRegisteredDoesAbort)
     SCORE_LANGUAGE_FUTURECPP_EXPECT_CONTRACT_VIOLATED(proxy_->SetupMethods());
 }
 
-TEST_F(ProxyMethodHandlingFixture, FieldSetNotRegisteredDoesAbort)
+TEST_F(ProxyMethodHandlingFixture, FieldMethodSetEnabledInConfigurationWhichIsNotCreatedInShmTerminates)
 {
     // Given a field whose Get and Set are enabled in config, but only the Get was registered (Set unregistered
     // showcasing a programming bug).
