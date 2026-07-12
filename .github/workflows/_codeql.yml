@@ -74,6 +74,54 @@ jobs:
           path: /tmp/codeql-results/codeql-nightly.csv
           retention-days: 30
 
+      - name: Debug - Check generated reports before upload
+        if: inputs.fetch-only != 'true' && always()
+        run: |
+          echo "╔════════════════════════════════════════════════════════════╗"
+          echo "║ CodeQL - Generated Reports Debug Log                       ║"
+          echo "╚════════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "━━━ STEP 1: CodeQL Results Directory ━━━"
+          if [ -d /tmp/codeql-results ]; then
+            echo "✓ Results directory found: /tmp/codeql-results"
+            echo ""
+            echo "All files in /tmp/codeql-results:"
+            find /tmp/codeql-results -type f -exec ls -lh {} \; | awk '{print "  " $9 " (" $5 ")"}'
+            echo ""
+            TOTAL_FILES=$(find /tmp/codeql-results -type f | wc -l)
+            echo "Total files: $TOTAL_FILES"
+          else
+            echo "✗ ERROR: /tmp/codeql-results directory does not exist!"
+          fi
+
+          echo ""
+          echo "━━━ STEP 2: Analysis Reports Subdirectory ━━━"
+          if [ -d /tmp/codeql-results/analysis_reports ]; then
+            echo "✓ analysis_reports directory found"
+            echo ""
+            echo "Markdown report files (.md):"
+            find /tmp/codeql-results/analysis_reports -name '*.md' -type f -exec ls -lh {} \; | awk '{print "  " $9 " (" $5 ")"}'
+            echo ""
+            MD_COUNT=$(find /tmp/codeql-results/analysis_reports -name '*.md' -type f | wc -l)
+            echo "Total .md files: $MD_COUNT"
+
+            if [ "$MD_COUNT" -eq 0 ]; then
+              echo ""
+              echo "⚠️  WARNING: No markdown reports found in analysis_reports!"
+              echo ""
+              echo "All files in analysis_reports:"
+              find /tmp/codeql-results/analysis_reports -type f | sed 's|^|  |'
+            fi
+          else
+            echo "✗ analysis_reports directory NOT found"
+            echo ""
+            echo "Directory structure:"
+            find /tmp/codeql-results -type d | sed 's|^|  |'
+          fi
+
+          echo ""
+          echo "╚════════════════════════════════════════════════════════════╝"
+
       - name: Upload MISRA compliance reports
         if: inputs.fetch-only != 'true' && always() && steps.run-codeql.outcome == 'success'
         uses: actions/upload-artifact@v4

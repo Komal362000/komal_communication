@@ -21,12 +21,6 @@ import glob
 
 
 TMP_PATH_FOR_DATABASES = "/var/tmp/codeql_databases"
-EXPECTED_REPORTS = [
-    "database_integrity_report.md",
-    "deviations_report.md",
-    "guideline_compliance_summary.md",
-    "guideline_recategorizations_report.md",
-]
 
 def create_database(code_ql_path, config_path, target, source_root, database_path):
     """Create the CodeQL database: init, build with tracing, finalize."""
@@ -96,27 +90,6 @@ def analyze_database(
             print(f"  Using SARIF: {sarif_path}")
             print(f"  Output directory: {output_base}")
 
-            # Prepare environment with CodeQL binary path
-            env = os.environ.copy()
-            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
-            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
-
-            # Install CodeQL pack dependencies required by the deviation queries.
-            # Without this, `codeql database run-queries` fails because it cannot
-            # resolve codeql/cpp-all and other pack dependencies.
-            pack_root = os.path.join(
-                os.path.dirname(os.path.realpath(analysis_report_path)),
-                "..", "..", "cpp", "common", "src")
-            if os.path.isdir(pack_root):
-                print("  Installing CodeQL pack dependencies...")
-                pack_install = subprocess.run(
-                    [os.path.join(codeql_bin_dir, "codeql"), "pack", "install", pack_root],
-                    capture_output=True, text=True, env=env)
-                if pack_install.returncode != 0:
-                    print(f"  ⚠️  Pack install failed: {pack_install.stderr.strip()}")
-                else:
-                    print("  ✓ CodeQL pack dependencies installed")
-
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
 
@@ -129,56 +102,15 @@ def analyze_database(
                  database_path,
                  sarif_path,
                  reports_output_dir],
-                capture_output=True, text=True, env=env)
+                capture_output=True, text=True)
 
             # Always show subprocess output for diagnostics
             if result.stdout:
                 print(f"  [analysis_report stdout]: {result.stdout.strip()}")
 
-            if os.path.exists(reports_output_dir):
-                report_files, generated, missing, reports_complete = _collect_report_generation_status(
-                    reports_output_dir
-                )
-
-                if reports_complete:
-                    print(f"✓ All {len(EXPECTED_REPORTS)} reports generated successfully")
-                elif generated:
-                    print(f"  ⚠️  Partial report generation: {len(generated)}/{len(EXPECTED_REPORTS)} reports")
-                    print(f"  Generated: {', '.join(generated)}")
-                    print(f"  Missing:")
-                    for r in missing:
-                        print(f"    ✗ {r}")
-
-                if report_files:
-                    print(f"\n  Generated Report Files:")
-                    for f in sorted(report_files):
-                        file_size = os.path.getsize(f) / 1024  # KB
-                        print(f"    ✓ {os.path.basename(f)} ({file_size:.1f} KB)")
-
-                if result.returncode != 0:
-                    if reports_complete:
-                        print(f"  ⚠️  analysis_report exited with code {result.returncode} after writing all expected reports")
-                        print("  NOTE: Upstream analysis_report raises a KeyError in its summary formatter for MISRA runs.")
-                    else:
-                        if result.stderr:
-                            print(f"  [analysis_report stderr]: {result.stderr.strip()}")
-                        print(f"  ⚠️  analysis_report exited with code {result.returncode}")
-                        if not generated:
-                            print(f"  ERROR: No reports generated. Check stdout/stderr above for details.")
-                            result.check_returncode()
-
-                if require_all_reports and missing:
-                    raise RuntimeError(
-                        "analysis_report did not generate all expected reports: "
-                        + ", ".join(missing)
-                    )
-            else:
-                if result.stderr:
-                    print(f"  [analysis_report stderr]: {result.stderr.strip()}")
-                if result.returncode == 0 and not os.path.exists(reports_output_dir):
-                    print(f"  ERROR: Reports output directory was not created even though process succeeded")
-                if require_all_reports:
-                    raise RuntimeError("analysis_report did not create the reports output directory")
+            if result.stderr:
+                print(f"  [analysis_report stderr]: {result.stderr.strip()}")
+            if result.returncode != 0:
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
             print(f"⚠️  Report generation failed: {e.stderr if e.stderr else e}")
