@@ -68,41 +68,35 @@ jobs:
 
           CODEQL_BIN=$(resolve_path "$CODEQL_BIN_REL")
           REPORT_BIN=$(resolve_path "$REPORT_BIN_REL")
+          BAZEL_OUTPUT_BASE=$(bazel info output_base)
 
-          find_pack_root() {
-            local report_bin="$1"
-            local report_dir
-            report_dir=$(dirname "$report_bin")
-            local -a candidates=(
-              "${report_dir}/cpp/common/src"
-              "${report_dir}/../cpp/common/src"
-              "${report_dir}/../../cpp/common/src"
-              "${report_bin}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
-              "${report_bin}.runfiles/codeql_coding_standards/cpp/common/src"
-            )
+          # REPORT_BIN_REL is typically external/<repo>/analysis_report. Use that repo name first.
+          REPORT_REPO=$(echo "$REPORT_BIN_REL" | sed -n 's|.*/external/\([^/]*\)/.*|\1|p')
+          CANDIDATE_QLPACK="${BAZEL_OUTPUT_BASE}/external/${REPORT_REPO}/cpp/common/src/qlpack.yml"
 
-            for c in "${candidates[@]}"; do
-              if [[ -d "$c" ]]; then
-                realpath "$c"
-                return 0
-              fi
-            done
-            return 1
-          }
+          if [[ -f "${CANDIDATE_QLPACK}" ]]; then
+            PACK_QLPACK="${CANDIDATE_QLPACK}"
+          else
+            # Fallback for differing repo naming in external/. Keep this constrained to cpp/common/src.
+            PACK_QLPACK=$(find "${BAZEL_OUTPUT_BASE}/external" -type f -path "*codeql_coding_standards/cpp/common/src/qlpack.yml" -print -quit || true)
+          fi
 
-          if ! PACK_ROOT=$(find_pack_root "$REPORT_BIN"); then
-            echo "::error::Unable to locate CodeQL pack root near REPORT_BIN=${REPORT_BIN}"
-            echo "Checked candidate locations:"
-            echo "  $(dirname "$REPORT_BIN")/cpp/common/src"
-            echo "  $(dirname "$REPORT_BIN")/../cpp/common/src"
-            echo "  $(dirname "$REPORT_BIN")/../../cpp/common/src"
-            echo "  ${REPORT_BIN}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
-            echo "  ${REPORT_BIN}.runfiles/codeql_coding_standards/cpp/common/src"
+          if [[ -z "${PACK_QLPACK:-}" ]]; then
+            echo "::error::Could not resolve codeql_coding_standards cpp/common qlpack.yml"
+            echo "REPORT_BIN_REL=${REPORT_BIN_REL}"
+            echo "REPORT_REPO=${REPORT_REPO}"
+            echo "BAZEL_OUTPUT_BASE=${BAZEL_OUTPUT_BASE}"
+            echo "Checked candidate: ${CANDIDATE_QLPACK}"
+            echo "First 20 qlpack candidates in external/:"
+            find "${BAZEL_OUTPUT_BASE}/external" -type f -name qlpack.yml | head -n 20 | sed 's|^|  |'
             exit 1
           fi
 
+          PACK_ROOT=$(dirname "${PACK_QLPACK}")
+
           echo "CodeQL binary: ${CODEQL_BIN}"
           echo "Report binary: ${REPORT_BIN}"
+          echo "Pack qlpack: ${PACK_QLPACK}"
           echo "Pack root: ${PACK_ROOT}"
 
           if [[ ! -x "${CODEQL_BIN}" ]]; then
