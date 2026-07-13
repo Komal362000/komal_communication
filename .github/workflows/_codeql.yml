@@ -70,6 +70,15 @@ jobs:
           REPORT_BIN=$(resolve_path "$REPORT_BIN_REL")
           BAZEL_OUTPUT_BASE=$(bazel info output_base)
 
+          # Try to locate the actual CodeQL executable via Bazel external repo cache
+          CODEQL_REPO=$(echo "$CODEQL_BIN_REL" | sed -n 's|.*external/\([^/]*\)/.*|\1|p')
+          if [[ -n "$CODEQL_REPO" ]]; then
+            CANDIDATE_CODEQL="${BAZEL_OUTPUT_BASE}/external/${CODEQL_REPO}/codeql/codeql"
+            if [[ -x "$CANDIDATE_CODEQL" ]]; then
+              CODEQL_BIN="$CANDIDATE_CODEQL"
+            fi
+          fi
+
           # REPORT_BIN_REL is typically external/<repo>/analysis_report. Use that repo name first.
           REPORT_REPO=$(echo "$REPORT_BIN_REL" | sed -n 's|.*/external/\([^/]*\)/.*|\1|p')
           CANDIDATE_QLPACK="${BAZEL_OUTPUT_BASE}/external/${REPORT_REPO}/cpp/common/src/qlpack.yml"
@@ -101,6 +110,12 @@ jobs:
 
           if [[ ! -x "${CODEQL_BIN}" ]]; then
             echo "::error::CodeQL binary not found or not executable: ${CODEQL_BIN}"
+            echo "CODEQL_BIN_REL=${CODEQL_BIN_REL}"
+            echo "CODEQL_REPO=${CODEQL_REPO}"
+            echo "BAZEL_OUTPUT_BASE=${BAZEL_OUTPUT_BASE}"
+            echo "Checked candidate: ${CANDIDATE_CODEQL:-<empty>}"
+            echo "Searching external/ for codeql binary:"
+            find "${BAZEL_OUTPUT_BASE}/external" -name codeql -type f 2>/dev/null | head -n 5 | sed 's|^|  |'
             exit 1
           fi
 
