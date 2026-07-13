@@ -49,6 +49,43 @@ jobs:
         if: inputs.fetch-only == 'true'
         run: bazel build --nobuild //...
 
+      - name: Install CodeQL query pack dependencies
+        if: inputs.fetch-only != 'true'
+        run: |
+          set -euo pipefail
+
+          CODEQL_BIN_REL=$(bazel cquery @codeql_bundle//:codeql_cli --output=files | head -n1)
+          REPORT_BIN_REL=$(bazel cquery @codeql_coding_standards//:analysis_report --output=files | head -n1)
+
+          resolve_path() {
+            local p="$1"
+            if [[ "$p" = /* ]]; then
+              echo "$p"
+            else
+              echo "${GITHUB_WORKSPACE}/$p"
+            fi
+          }
+
+          CODEQL_BIN=$(resolve_path "$CODEQL_BIN_REL")
+          REPORT_BIN=$(resolve_path "$REPORT_BIN_REL")
+          PACK_ROOT=$(realpath "$(dirname "$REPORT_BIN")/../../cpp/common/src")
+
+          echo "CodeQL binary: ${CODEQL_BIN}"
+          echo "Report binary: ${REPORT_BIN}"
+          echo "Pack root: ${PACK_ROOT}"
+
+          if [[ ! -x "${CODEQL_BIN}" ]]; then
+            echo "::error::CodeQL binary not found or not executable: ${CODEQL_BIN}"
+            exit 1
+          fi
+
+          if [[ ! -d "${PACK_ROOT}" ]]; then
+            echo "::error::CodeQL pack root not found: ${PACK_ROOT}"
+            exit 1
+          fi
+
+          "${CODEQL_BIN}" pack install "${PACK_ROOT}"
+
       - name: Run CodeQL analysis
         if: inputs.fetch-only != 'true'
         id: run-codeql
