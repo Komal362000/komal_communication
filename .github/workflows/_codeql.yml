@@ -68,7 +68,38 @@ jobs:
 
           CODEQL_BIN=$(resolve_path "$CODEQL_BIN_REL")
           REPORT_BIN=$(resolve_path "$REPORT_BIN_REL")
-          PACK_ROOT=$(realpath "$(dirname "$REPORT_BIN")/../../cpp/common/src")
+
+          find_pack_root() {
+            local report_bin="$1"
+            local report_dir
+            report_dir=$(dirname "$report_bin")
+            local -a candidates=(
+              "${report_dir}/cpp/common/src"
+              "${report_dir}/../cpp/common/src"
+              "${report_dir}/../../cpp/common/src"
+              "${report_bin}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
+              "${report_bin}.runfiles/codeql_coding_standards/cpp/common/src"
+            )
+
+            for c in "${candidates[@]}"; do
+              if [[ -d "$c" ]]; then
+                realpath "$c"
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          if ! PACK_ROOT=$(find_pack_root "$REPORT_BIN"); then
+            echo "::error::Unable to locate CodeQL pack root near REPORT_BIN=${REPORT_BIN}"
+            echo "Checked candidate locations:"
+            echo "  $(dirname "$REPORT_BIN")/cpp/common/src"
+            echo "  $(dirname "$REPORT_BIN")/../cpp/common/src"
+            echo "  $(dirname "$REPORT_BIN")/../../cpp/common/src"
+            echo "  ${REPORT_BIN}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
+            echo "  ${REPORT_BIN}.runfiles/codeql_coding_standards/cpp/common/src"
+            exit 1
+          fi
 
           echo "CodeQL binary: ${CODEQL_BIN}"
           echo "Report binary: ${REPORT_BIN}"
@@ -90,6 +121,31 @@ jobs:
         if: inputs.fetch-only != 'true'
         id: run-codeql
         run: |
+          set -euo pipefail
+
+          echo "━━━ CodeQL runner and Bazel path diagnostics ━━━"
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          echo "RUNNER_WORKSPACE=${RUNNER_WORKSPACE:-<unset>}"
+          echo "RUNNER_TEMP=${RUNNER_TEMP:-<unset>}"
+          echo "PWD=$(pwd)"
+
+          BAZEL_OUTPUT_BASE=$(bazel info output_base)
+          BAZEL_OUTPUT_PATH=$(bazel info output_path)
+          BAZEL_EXECUTION_ROOT=$(bazel info execution_root)
+          BAZEL_WORKSPACE=$(bazel info workspace)
+
+          echo "bazel info output_base=${BAZEL_OUTPUT_BASE}"
+          echo "bazel info output_path=${BAZEL_OUTPUT_PATH}"
+          echo "bazel info execution_root=${BAZEL_EXECUTION_ROOT}"
+          echo "bazel info workspace=${BAZEL_WORKSPACE}"
+
+          if [[ -d "${BAZEL_OUTPUT_BASE}/external" ]]; then
+            echo "Contents under ${BAZEL_OUTPUT_BASE}/external (depth <= 2):"
+            find "${BAZEL_OUTPUT_BASE}/external" -maxdepth 2 -mindepth 1 -type d | sed 's|^|  |'
+          else
+            echo "Directory not found: ${BAZEL_OUTPUT_BASE}/external"
+          fi
+
           bazel run //quality/static_analysis:codeql_lint -- \
             --output-dir /tmp/codeql-results \
             --output-prefix codeql-nightly \
