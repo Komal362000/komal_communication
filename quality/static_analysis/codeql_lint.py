@@ -17,7 +17,6 @@ import json
 import subprocess
 import datetime
 import shutil
-import glob
 
 
 TMP_PATH_FOR_DATABASES = "/var/tmp/codeql_databases"
