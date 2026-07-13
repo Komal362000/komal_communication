@@ -90,6 +90,11 @@ def analyze_database(
             print(f"  Using SARIF: {sarif_path}")
             print(f"  Output directory: {output_base}")
 
+            # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
+            env = os.environ.copy()
+            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
 
@@ -102,7 +107,7 @@ def analyze_database(
                  database_path,
                  sarif_path,
                  reports_output_dir],
-                capture_output=True, text=True)
+                capture_output=True, text=True, env=env)
 
             # Always show subprocess output for diagnostics
             if result.stdout:
@@ -204,14 +209,6 @@ def _get_bazel_info(source_root):
             key, value = line.split(':', 1)
             bazel_info[key.strip()] = value.strip()
     return bazel_info
-
-
-def _collect_report_generation_status(reports_output_dir):
-    report_files = sorted(glob.glob(os.path.join(reports_output_dir, "*.md")))
-    generated = [os.path.basename(f) for f in report_files]
-    missing = [report for report in EXPECTED_REPORTS if report not in generated]
-    reports_complete = not missing and len(generated) == len(EXPECTED_REPORTS)
-    return report_files, generated, missing, reports_complete
 
 
 if __name__ == "__main__":
