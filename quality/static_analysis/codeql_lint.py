@@ -88,6 +88,7 @@ def analyze_database(
             env = os.environ.copy()
             codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+            print(f"  PATH for analysis_report: {env['PATH']}")
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
