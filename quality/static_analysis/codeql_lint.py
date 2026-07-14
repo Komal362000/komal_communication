@@ -67,7 +67,6 @@ def analyze_database(
     csv_path = f"{output_base}/{output_prefix}.csv"
 
     # Run CodeQL analysis (generates SARIF)
-    print("\n Running CodeQL analysis...")
     subprocess.run(
         f"{code_ql_path} database analyze -j=0 {database_path}{query_arg} "
         f"--format=sarifv2.1.0 --output={sarif_path}",
@@ -81,13 +80,9 @@ def analyze_database(
 
     # Generate reports using CodeQL analysis_report tool
     if analysis_report_path and os.path.exists(analysis_report_path):
-        print(" Generating MISRA C++ compliance reports...")
         try:
             # Make analysis_report executable and run it
             os.chmod(analysis_report_path, 0o755)
-            print(f"  Using database: {database_path}")
-            print(f"  Using SARIF: {sarif_path}")
-            print(f"  Output directory: {output_base}")
 
             # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
             env = os.environ.copy()

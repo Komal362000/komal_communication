@@ -36,24 +36,6 @@ def _generate_quality_links_impl(ctx):
     docs_version = ctx.var.get("DOCS_VERSION", "")
     docs_base_url = ctx.var.get("DOCS_BASE_URL", "").rstrip("/")
 
-    release_coverage_asset_url = ""
-    if docs_base_url.startswith("https://"):
-        url_without_scheme = docs_base_url[8:]
-        url_parts = url_without_scheme.split("/")
-        if len(url_parts) >= 2:
-            host = url_parts[0]
-            repo = url_parts[1]
-            if host.endswith(".github.io") and repo:
-                owner = host[:-len(".github.io")]
-                if owner.endswith("."):
-                    owner = owner[:-1]
-                if owner:
-                    release_coverage_asset_url = (
-                        "https://github.com/" + owner + "/" + repo +
-                        "/releases/download/" + docs_version + "/" +
-                        repo + "_coverage_report_" + docs_version + ".zip"
-                    )
-
     if docs_version == "latest":
         # quality reports are published alongside the latest/ docs
         coverage_ref = "`Coverage report <quality/coverage/index.html>`__"
@@ -65,16 +47,10 @@ def _generate_quality_links_impl(ctx):
         codeql_compliance_ref = "`Compliance summary <quality/codeql/guideline_compliance_summary.md>`__"
         codeql_recat_ref = "`Recategorizations <quality/codeql/guideline_recategorizations_report.md>`__"
     elif docs_version and docs_base_url:
-        # versioned release — quality reports generally live at latest/
+        # versioned release — quality reports only live at latest/
         latest = docs_base_url + "/latest"
-        if release_coverage_asset_url:
-            coverage_ref = (
-                "`Coverage report (release artifact) <" +
-                release_coverage_asset_url + ">`__"
-            )
-        else:
-            coverage_ref = ("`Coverage report (latest) <" + latest +
-                            "/quality/coverage/index.html>`__")
+        coverage_ref = ("`Coverage report (latest) <" + latest +
+                        "/quality/coverage/index.html>`__")
         dashboard_ref = ("`Quality Dashboard (latest) <" + latest +
                          "/quality/index.html>`__")
         clang_tidy_ref = ("`Clang-Tidy report (latest) <" + latest +
