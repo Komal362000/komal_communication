@@ -87,7 +87,10 @@ def analyze_database(
             # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
             env = os.environ.copy()
             codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            print(f"  Resolved CodeQL bin dir: {codeql_bin_dir}")
+            print(f"  CodeQL bin dir exists: {os.path.isdir(codeql_bin_dir)}")
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+            print(f"  PATH for analysis_report: {env['PATH']}")
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
@@ -103,10 +106,18 @@ def analyze_database(
                  reports_output_dir],
                 capture_output=True, text=True, env=env)
 
+            # Always show subprocess output for diagnostics
+            if result.stdout:
+                print(f"  [analysis_report stdout]: {result.stdout.strip()}")
+
+            if result.stderr:
+                print(f"  [analysis_report stderr]: {result.stderr.strip()}")
             if result.returncode != 0:
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
-            pass
+            print(f"⚠️  Report generation failed: {e.stderr if e.stderr else e}")
+    else:
+        print(" Report generation skipped (analysis_report tool not available)")
 
 
 def main():
@@ -161,6 +172,7 @@ def main():
                            query_spec=args.query_spec, output_prefix=args.output_prefix,
                            output_dir=args.output_dir,
                            require_all_reports=args.require_all_reports)
+            print(f"  Use this database for future report generation")
 
 
 def _get_action_env_extension(codeql_env):
