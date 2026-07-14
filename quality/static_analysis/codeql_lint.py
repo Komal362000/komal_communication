@@ -67,7 +67,6 @@ def analyze_database(
     csv_path = f"{output_base}/{output_prefix}.csv"
 
     # Run CodeQL analysis (generates SARIF)
-    print("\n Running CodeQL analysis...")
     subprocess.run(
         f"{code_ql_path} database analyze -j=0 {database_path}{query_arg} "
         f"--format=sarifv2.1.0 --output={sarif_path}",
@@ -81,21 +80,14 @@ def analyze_database(
 
     # Generate reports using CodeQL analysis_report tool
     if analysis_report_path and os.path.exists(analysis_report_path):
-        print(" Generating MISRA C++ compliance reports...")
         try:
             # Make analysis_report executable and run it
             os.chmod(analysis_report_path, 0o755)
-            print(f"  Using database: {database_path}")
-            print(f"  Using SARIF: {sarif_path}")
-            print(f"  Output directory: {output_base}")
 
             # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
             env = os.environ.copy()
             codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
-            print(f"  Resolved CodeQL bin dir: {codeql_bin_dir}")
-            print(f"  CodeQL bin dir exists: {os.path.isdir(codeql_bin_dir)}")
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
-            print(f"  PATH for analysis_report: {env['PATH']}")
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
@@ -111,12 +103,6 @@ def analyze_database(
                  reports_output_dir],
                 capture_output=True, text=True, env=env)
 
-            # Always show subprocess output for diagnostics
-            if result.stdout:
-                print(f"  [analysis_report stdout]: {result.stdout.strip()}")
-
-            if result.stderr:
-                print(f"  [analysis_report stderr]: {result.stderr.strip()}")
             if result.returncode != 0:
                 result.check_returncode()
         except subprocess.CalledProcessError as e:
@@ -177,7 +163,6 @@ def main():
                            query_spec=args.query_spec, output_prefix=args.output_prefix,
                            output_dir=args.output_dir,
                            require_all_reports=args.require_all_reports)
-            print(f"  Use this database for future report generation")
 
 
 def _get_action_env_extension(codeql_env):
