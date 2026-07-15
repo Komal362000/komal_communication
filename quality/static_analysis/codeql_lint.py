@@ -81,19 +81,34 @@ def analyze_database(
     # Generate reports using CodeQL analysis_report tool
     if analysis_report_path and os.path.exists(analysis_report_path):
         try:
+            # Ensure absolute paths for both executables
+            analysis_report_abs = os.path.abspath(analysis_report_path)
+            codeql_abs = os.path.abspath(code_ql_path)
+
             # Make analysis_report executable and run it
-            os.chmod(analysis_report_path, 0o755)
+            os.chmod(analysis_report_abs, 0o755)
 
             # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
             env = os.environ.copy()
-            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            codeql_bin_dir = os.path.dirname(os.path.realpath(codeql_abs))
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+
+            # Debug: Show the CodeQL binary path and updated PATH
+            print(f" CodeQL binary path: {codeql_abs}")
+            print(f" CodeQL binary directory: {codeql_bin_dir}")
+            print(f" Updated PATH: {env['PATH'][:200]}...")  # Show first 200 chars
+
+            # Verify CodeQL binary exists
+            if os.path.isfile(codeql_abs) and os.access(codeql_abs, os.X_OK):
+                print(f" ✓ CodeQL binary is executable: {codeql_abs}")
+            else:
+                print(f" ⚠️  CodeQL binary not executable: {codeql_abs}")
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
 
             result = subprocess.run(
-                [analysis_report_path,
+                [analysis_report_abs,
                  database_path,
                  sarif_path,
                  reports_output_dir],
