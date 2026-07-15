@@ -133,53 +133,31 @@ jobs:
           fi
 
           find_pack_root() {
-            local report_bin="$1"
-            local bazel_output_base="$2"
-            local report_dir
-            report_dir=$(dirname "$report_bin")
-            local -a candidates=(
-              "${report_dir}/cpp/common/src"
-              "${report_dir}/../cpp/common/src"
-              "${report_dir}/../../cpp/common/src"
-              "${report_bin}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
-              "${report_bin}.runfiles/codeql_coding_standards/cpp/common/src"
-            )
+            local bazel_output_base="$1"
 
-            # Try direct candidates first
-            for c in "${candidates[@]}"; do
-              if [[ -d "$c" ]]; then
-                realpath "$c"
-                return 0
-              fi
-            done
+            # Direct search for codeql_coding_standards cpp/common/src in the bazel external cache
+            # This is more reliable than trying to navigate from the report_bin path
+            local pack_root
+            pack_root=$(find "${bazel_output_base}/external" -type d -path "*codeql_coding_standards/cpp/common/src" -print -quit 2>/dev/null)
 
-            # If not found, search in bazel external cache
-            if [[ -d "${bazel_output_base}/external" ]]; then
-              # Find the first codeql_coding_standards directory with cpp/common/src
-              local pack_root
-              pack_root=$(find "${bazel_output_base}/external" -type d -path "*/codeql_coding_standards/cpp/common/src" -print -quit)
-              if [[ -n "$pack_root" ]]; then
-                realpath "$pack_root"
-                return 0
-              fi
+            if [[ -n "$pack_root" && -d "$pack_root" ]]; then
+              echo "$pack_root"
+              return 0
             fi
 
             return 1
           }
 
-          if ! PACK_ROOT=$(find_pack_root "$REPORT_BIN" "$BAZEL_OUTPUT_BASE"); then
-            echo "::error::Unable to locate CodeQL pack root near REPORT_BIN=${REPORT_BIN}"
-            echo "Checked candidate locations:"
-            echo " $(dirname "$REPORT_BIN")/cpp/common/src"
-            echo " $(dirname "$REPORT_BIN")/../cpp/common/src"
-            echo " $(dirname "$REPORT_BIN")/../../cpp/common/src"
-            echo " ${REPORT_BIN}.runfiles/+_repo_rules4+codeql_coding_standards/cpp/common/src"
-            echo " ${REPORT_BIN}.runfiles/codeql_coding_standards/cpp/common/src"
+          if ! PACK_ROOT=$(find_pack_root "$BAZEL_OUTPUT_BASE"); then
+            echo "::error::Unable to locate CodeQL pack root (cpp/common/src) in ${BAZEL_OUTPUT_BASE}/external"
             echo ""
-            echo "Also searched in: ${BAZEL_OUTPUT_BASE}/external for codeql_coding_standards/cpp/common/src"
-            echo "Available in external:"
+            echo "Searched for: *codeql_coding_standards/cpp/common/src"
+            echo ""
+            echo "Available directories in external:"
             if [[ -d "${BAZEL_OUTPUT_BASE}/external" ]]; then
-              find "${BAZEL_OUTPUT_BASE}/external" -maxdepth 3 -type d -name "cpp" 2>/dev/null | sed 's|^| |'
+              find "${BAZEL_OUTPUT_BASE}/external" -type d -name "codeql_coding_standards" 2>/dev/null | sed 's|^| |'
+              echo ""
+              find "${BAZEL_OUTPUT_BASE}/external" -type d -name "cpp" 2>/dev/null | grep codeql | sed 's|^| |' | head -20
             fi
             exit 1
           fi
