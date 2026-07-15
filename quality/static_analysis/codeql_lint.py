@@ -87,7 +87,10 @@ def analyze_database(
             # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
             env = os.environ.copy()
             codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            print(f" Resolved CodeQL bin dir: {codeql_bin_dir}")
+            print(f" CodeQL bin dir exists: {os.path.isdir(codeql_bin_dir)}")
             env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+            print(f" PATH for analysis_report: {env['PATH']}")
 
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
@@ -106,7 +109,9 @@ def analyze_database(
             if result.stderr:
                 print(f" [analysis_report stderr]: {result.stderr.strip()}")
             if result.returncode != 0:
-                result.check_returncode()
+                print(f" ⚠️  analysis_report exited with code {result.returncode}")
+                # Don't raise exception - allow workflow to continue
+
         except Exception as e:
             print(f"⚠️  Report generation exception: {e}")
 
