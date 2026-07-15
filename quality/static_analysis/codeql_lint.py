@@ -84,37 +84,24 @@ def analyze_database(
             # Make analysis_report executable and run it
             os.chmod(analysis_report_path, 0o755)
 
-            # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
-            env = os.environ.copy()
-            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
-            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
-
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
-
-            # Remove existing reports directory if it exists
-            if os.path.exists(reports_output_dir):
-                shutil.rmtree(reports_output_dir)
 
             result = subprocess.run(
                 [analysis_report_path,
                  database_path,
                  sarif_path,
                  reports_output_dir],
-                capture_output=True, text=True, env=env, check=False)
+                capture_output=True, text=True)
 
-            # Check if reports were generated successfully
-            if result.returncode == 0 and os.path.exists(reports_output_dir):
-                report_files = [f for f in os.listdir(reports_output_dir) if f.endswith('.md')]
-                if report_files:
-                    pass  # Reports successfully generated
-                else:
-                    print(f"⚠️  No .md reports generated in {reports_output_dir}")
-            else:
-                if result.stderr:
-                    print(f"⚠️  analysis_report warning: {result.stderr}")
-                else:
-                    print(f"⚠️  analysis_report exited with code {result.returncode}")
+            # Always show subprocess output for diagnostics
+            if result.stdout:
+                print(f" [analysis_report stdout]: {result.stdout.strip()}")
+
+            if result.stderr:
+                print(f" [analysis_report stderr]: {result.stderr.strip()}")
+            if result.returncode != 0:
+                result.check_returncode()
         except Exception as e:
             print(f"⚠️  Report generation exception: {e}")
 
