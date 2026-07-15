@@ -84,6 +84,11 @@ def analyze_database(
             # Make analysis_report executable and run it
             os.chmod(analysis_report_path, 0o755)
 
+            # Prepare environment with CodeQL binary path so analysis_report can find 'codeql' command
+            env = os.environ.copy()
+            codeql_bin_dir = os.path.dirname(os.path.realpath(code_ql_path))
+            env["PATH"] = f"{codeql_bin_dir}:{env.get('PATH', '')}"
+
             # analysis_report expects positional args: database-dir sarif-file output-dir
             reports_output_dir = os.path.join(output_base, "analysis_reports")
 
@@ -92,7 +97,7 @@ def analyze_database(
                  database_path,
                  sarif_path,
                  reports_output_dir],
-                capture_output=True, text=True)
+                capture_output=True, text=True, env=env)
 
             # Always show subprocess output for diagnostics
             if result.stdout:
