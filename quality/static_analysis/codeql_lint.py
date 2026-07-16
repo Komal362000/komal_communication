@@ -113,7 +113,7 @@ def analyze_database(
                 # Don't raise exception - allow workflow to continue
 
         except Exception as e:
-            print(f"⚠️  Report generation exception: {e}")
+            print(f"Report generation exception: {e}")
 
 
 def main():
