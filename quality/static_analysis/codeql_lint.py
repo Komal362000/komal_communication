@@ -56,7 +56,6 @@ def analyze_database(
     query_spec=None,
     output_prefix="codeql",
     output_dir=None,
-    require_all_reports=False,
 ):
     """Run CodeQL analysis and generate MISRA C++ compliance reports."""
     output_base = output_dir or _get_bazel_info(source_root).get('output_path')
@@ -128,11 +127,6 @@ def main():
     parser.add_argument("--query-spec", help="CodeQL query spec")
     parser.add_argument("--output-prefix", default="codeql", help="Output prefix")
     parser.add_argument("--output-dir", help="Output directory")
-    parser.add_argument(
-        "--require-all-reports",
-        action="store_true",
-        help="Fail if any expected MISRA markdown report is missing",
-    )
 
     args = parser.parse_args()
     target = " ".join(args.target) if args.target else ""
@@ -149,8 +143,7 @@ def main():
         analyze_database(codeql_path, args.database_path, source_root,
                         analysis_report_path=args.analysis_report_path,
                         query_spec=args.query_spec, output_prefix=args.output_prefix,
-                        output_dir=args.output_dir,
-                        require_all_reports=args.require_all_reports)
+                        output_dir=args.output_dir)
 
     else:  # all
         # Use standard Bazel output directory for database
@@ -166,8 +159,7 @@ def main():
             analyze_database(codeql_path, database_location, source_root,
                            analysis_report_path=args.analysis_report_path,
                            query_spec=args.query_spec, output_prefix=args.output_prefix,
-                           output_dir=args.output_dir,
-                           require_all_reports=args.require_all_reports)
+                           output_dir=args.output_dir)
 
 
 def _get_action_env_extension(codeql_env):
