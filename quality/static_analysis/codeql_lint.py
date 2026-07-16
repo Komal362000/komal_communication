@@ -109,14 +109,14 @@ def analyze_database(
                 if report_files:
                     pass  # Reports successfully generated
                 else:
-                    print(f"⚠️  No .md reports generated in {reports_output_dir}")
+                    print(f"No .md reports generated in {reports_output_dir}")
             else:
                 if result.stderr:
-                    print(f"⚠️  analysis_report warning: {result.stderr}")
+                    print(f"analysis_report warning: {result.stderr}")
                 else:
-                    print(f"⚠️  analysis_report exited with code {result.returncode}")
+                    print(f"analysis_report exited with code {result.returncode}")
         except Exception as e:
-            print(f"⚠️  Report generation exception: {e}")
+            print(f"Report generation exception: {e}")
 
 
 def main():
