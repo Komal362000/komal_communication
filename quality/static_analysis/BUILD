@@ -24,10 +24,10 @@ py_binary(
         "@codeql_coding_standards//:analysis_report",
         "@codeql_coding_standards//:process_coding_standards_config",
     ],
-    deps = ["@rules_python//python/runfiles"],
     main = "codeql_lint.py",
     tags = ["local"],
     target_compatible_with = ["@platforms//os:linux"],
+    deps = ["@rules_python//python/runfiles"],
 )
 
 filegroup(
