@@ -91,6 +91,7 @@ def analyze_database(
     csv_path = f"{output_base}/{output_prefix}.csv"
 
     # Run CodeQL analysis (generates SARIF)
+    print("\n Running CodeQL analysis...")
     subprocess.run(
         f"{code_ql_path} database analyze -j=0 {database_path}{query_arg} "
         f"--format=sarifv2.1.0 --output={sarif_path}",
