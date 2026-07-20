@@ -106,6 +106,7 @@ def analyze_database(
     # Generate reports using CodeQL analysis_report tool
     print(" Generating MISRA C++ compliance reports...")
     if analysis_report_path and os.path.exists(analysis_report_path):
+        print(" Generating MISRA C++ compliance reports...")
         try:
             # Make analysis_report executable and run it
             os.chmod(analysis_report_path, 0o755)
@@ -139,7 +140,7 @@ def analyze_database(
             if result.stderr:
                 print(f" [analysis_report stderr]: {result.stderr.strip()}")
             if result.returncode != 0:
-                print(f" ⚠️  analysis_report exited with code {result.returncode}")
+                print(f"   analysis_report exited with code {result.returncode}")
                 # Don't raise exception - allow workflow to continue
 
         except Exception as e:
