@@ -14,7 +14,6 @@
 name: "Improvement / Task"
 description: Issue to track a improvement / task
 title: "Improvement: Your Improvement title"
-labels: ["codeowner_review"]
 body:
 - type: textarea
   attributes:
@@ -38,7 +37,7 @@ body:
       - Estimate the effort, resources, risk for the realization
       - Impact to users of the feature
   validations:
-    required: true
+    required: false
 - type: checkboxes
   attributes:
     label: Category

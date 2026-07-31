@@ -24,6 +24,8 @@ Supported configurations:
 
 load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 
+visibility(["//..."])
+
 def sphinx_build_settings(name = "sphinx_build_flags", visibility = None):
     """
     Creates feature flags for selecting sphinx build implementation.

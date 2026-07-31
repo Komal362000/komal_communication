@@ -159,8 +159,8 @@ Result<void> SkeletonMethod<ReturnType(ArgTypes...)>::RegisterHandler(Callable&&
             // Call the callable with the typed_return_ptr and the typed_in_arg_ptrs which are unpacked from the
             // tuple into individual arguments.
             std::apply(
-                [&actual_callback, typed_return_ptr](ArgTypes*... typed_in_arg_ptrs) {
-                    std::invoke(actual_callback, *typed_return_ptr, *typed_in_arg_ptrs...);
+                [&actual_callback, typed_return_ptr](ArgTypes*... in_arg_ptrs) {
+                    std::invoke(actual_callback, *typed_return_ptr, *in_arg_ptrs...);
                 },
                 typed_in_arg_ptrs);
         }
@@ -169,8 +169,8 @@ Result<void> SkeletonMethod<ReturnType(ArgTypes...)>::RegisterHandler(Callable&&
             // Call the callable with the typed_in_arg_ptrs which are unpacked from the tuple into individual
             // arguments.
             std::apply(
-                [&actual_callback](ArgTypes*... typed_in_arg_ptrs) {
-                    std::invoke(actual_callback, *typed_in_arg_ptrs...);
+                [&actual_callback](ArgTypes*... in_arg_ptrs) {
+                    std::invoke(actual_callback, *in_arg_ptrs...);
                 },
                 typed_in_arg_ptrs);
         }

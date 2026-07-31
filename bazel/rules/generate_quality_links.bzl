@@ -32,27 +32,38 @@ Then add ":quality_links" to sphinx_module srcs, and in quality_reports.rst:
   .. include:: quality_links.rst
 """
 
+visibility(["//..."])
+
 def _generate_quality_links_impl(ctx):
     docs_version = ctx.var.get("DOCS_VERSION", "")
     docs_base_url = ctx.var.get("DOCS_BASE_URL", "").rstrip("/")
 
-    release_coverage_asset_url = ""
-    if docs_base_url.startswith("https://"):
-        url_without_scheme = docs_base_url[8:]
+    def _release_asset_url(base_url, version, asset_suffix):
+        if not base_url.startswith("https://"):
+            return ""
+        url_without_scheme = base_url[8:]
         url_parts = url_without_scheme.split("/")
-        if len(url_parts) >= 2:
-            host = url_parts[0]
-            repo = url_parts[1]
-            if host.endswith(".github.io") and repo:
-                owner = host[:-len(".github.io")]
-                if owner.endswith("."):
-                    owner = owner[:-1]
-                if owner:
-                    release_coverage_asset_url = (
-                        "https://github.com/" + owner + "/" + repo +
-                        "/releases/download/" + docs_version + "/" +
-                        repo + "_coverage_report_" + docs_version + ".zip"
-                    )
+        if len(url_parts) < 2:
+            return ""
+        host = url_parts[0]
+        repo = url_parts[1]
+        if not (host.endswith(".github.io") and repo):
+            return ""
+        owner = host[:-len(".github.io")]
+        if owner.endswith("."):
+            owner = owner[:-1]
+        if not owner:
+            return ""
+        return (
+            "https://github.com/" + owner + "/" + repo +
+            "/releases/download/" + version + "/" +
+            repo + "_" + asset_suffix + "_" + version + ".zip"
+        )
+
+    release_coverage_asset_url = _release_asset_url(docs_base_url, docs_version, "coverage_report")
+    release_clang_tidy_asset_url = _release_asset_url(docs_base_url, docs_version, "clang_tidy_report")
+    release_codeql_asset_url = _release_asset_url(docs_base_url, docs_version, "codeql_report")
+    release_dashboard_asset_url = _release_asset_url(docs_base_url, docs_version, "quality_dashboard")
 
     if docs_version == "latest":
         # quality reports are published alongside the latest/ docs
@@ -65,7 +76,8 @@ def _generate_quality_links_impl(ctx):
         codeql_compliance_ref = "`Compliance summary <quality/codeql/guideline_compliance_summary.md>`__"
         codeql_recat_ref = "`Recategorizations <quality/codeql/guideline_recategorizations_report.md>`__"
     elif docs_version and docs_base_url:
-        # versioned release — quality reports only live at latest/
+        # versioned release — quality reports are uploaded as release assets;
+        # fall back to latest/ only when the asset URL cannot be derived.
         latest = docs_base_url + "/latest"
         if release_coverage_asset_url:
             coverage_ref = (
@@ -75,20 +87,44 @@ def _generate_quality_links_impl(ctx):
         else:
             coverage_ref = ("`Coverage report (latest) <" + latest +
                             "/quality/coverage/index.html>`__")
-        dashboard_ref = ("`Quality Dashboard (latest) <" + latest +
-                         "/quality/index.html>`__")
-        clang_tidy_ref = ("`Clang-Tidy report (latest) <" + latest +
-                          "/quality/clang_tidy_findings.txt>`__")
-        codeql_ref = ("`CodeQL findings (latest) <" + latest +
-                      "/quality/codeql_findings.txt>`__")
-        codeql_integrity_ref = ("`Database integrity (latest) <" + latest +
-                                "/quality/codeql/database_integrity_report.md>`__")
-        codeql_deviations_ref = ("`Deviations (latest) <" + latest +
-                                 "/quality/codeql/deviations_report.md>`__")
-        codeql_compliance_ref = ("`Compliance summary (latest) <" + latest +
-                                 "/quality/codeql/guideline_compliance_summary.md>`__")
-        codeql_recat_ref = ("`Recategorizations (latest) <" + latest +
-                            "/quality/codeql/guideline_recategorizations_report.md>`__")
+        if release_dashboard_asset_url:
+            dashboard_ref = (
+                "`Quality Dashboard (release artifact) <" +
+                release_dashboard_asset_url + ">`__"
+            )
+        else:
+            dashboard_ref = ("`Quality Dashboard (latest) <" + latest +
+                             "/quality/index.html>`__")
+        if release_clang_tidy_asset_url:
+            clang_tidy_ref = (
+                "`Clang-Tidy report (release artifact) <" +
+                release_clang_tidy_asset_url + ">`__"
+            )
+        else:
+            clang_tidy_ref = ("`Clang-Tidy report (latest) <" + latest +
+                              "/quality/clang_tidy_findings.txt>`__")
+        if release_codeql_asset_url:
+            codeql_ref = ("`CodeQL findings (release artifact) <" +
+                          release_codeql_asset_url + ">`__")
+            codeql_integrity_ref = ("`Database integrity (release artifact) <" +
+                                    release_codeql_asset_url + ">`__")
+            codeql_deviations_ref = ("`Deviations (release artifact) <" +
+                                     release_codeql_asset_url + ">`__")
+            codeql_compliance_ref = ("`Compliance summary (release artifact) <" +
+                                     release_codeql_asset_url + ">`__")
+            codeql_recat_ref = ("`Recategorizations (release artifact) <" +
+                                release_codeql_asset_url + ">`__")
+        else:
+            codeql_ref = ("`CodeQL findings (latest) <" + latest +
+                          "/quality/codeql_findings.txt>`__")
+            codeql_integrity_ref = ("`Database integrity (latest) <" + latest +
+                                    "/quality/codeql/database_integrity_report.md>`__")
+            codeql_deviations_ref = ("`Deviations (latest) <" + latest +
+                                     "/quality/codeql/deviations_report.md>`__")
+            codeql_compliance_ref = ("`Compliance summary (latest) <" + latest +
+                                     "/quality/codeql/guideline_compliance_summary.md>`__")
+            codeql_recat_ref = ("`Recategorizations (latest) <" + latest +
+                                "/quality/codeql/guideline_recategorizations_report.md>`__")
     else:
         # local build — no published reports; show the equivalent bazel command
         coverage_ref = (

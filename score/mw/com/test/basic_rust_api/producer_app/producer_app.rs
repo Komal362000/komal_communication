@@ -35,7 +35,7 @@ use bigdata_com_api_gen::{
     SimpleStruct, VehicleState,
 };
 use clap::Parser;
-use com_api::{
+use score_com::{
     Builder, InstanceSpecifier, LolaRuntimeBuilderImpl, Producer, Publisher, Runtime,
     RuntimeBuilder, SampleMaybeUninit, SampleMut,
 };

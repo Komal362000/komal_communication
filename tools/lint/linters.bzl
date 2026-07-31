@@ -17,6 +17,8 @@ load("@aspect_rules_lint//lint:clang_tidy.bzl", "lint_clang_tidy_aspect")
 load("@aspect_rules_lint//lint:lint_test.bzl", "lint_test")
 load("@bazel_skylib//rules:write_file.bzl", "write_file")
 
+visibility(["//..."])
+
 # Define the clang-tidy linter aspect using LLVM toolchain
 clang_tidy = lint_clang_tidy_aspect(
     binary = Label("@llvm_toolchain//:clang-tidy"),

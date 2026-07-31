@@ -18,7 +18,7 @@
 //! and wires them through the com-api `Interface` / `Consumer` / `Producer`
 //! abstractions instead of the legacy `mw_com::import_interface!` macro.
 
-use com_api::{interface, CommData, ProviderInfo, Publisher, Reloc, Subscriber};
+use score_com::{interface, CommData, ProviderInfo, Publisher, Reloc, Subscriber};
 
 use core::fmt::Debug;
 

@@ -13,7 +13,7 @@
 
 //! This crates implements the COM API runtime for Lola
 //! It provides the necessary structures and implementations to interact with the Lola communication middleware
-//! through the COM API abstractions defined in the `com_api_concept` crate.
+//! through the COM API abstractions defined in the `score_com_concept` crate.
 //! It includes runtime implementation, producer and consumer builders, and other related components.
 //! It leverages FFI bindings to interface with the underlying Lola middleware.
 //! It has three main modules:
@@ -29,9 +29,9 @@ mod consumer;
 mod producer;
 mod runtime;
 
-pub use consumer::{LolaConsumerInfo, Sample, LolaConsumerDiscovery, SubscribableImpl};
+pub use consumer::{LolaConsumerDiscovery, LolaConsumerInfo, LolaSample, LolaSubscribableImpl};
 pub use producer::{
-    LolaProviderInfo, Publisher, SampleMaybeUninit, SampleMut, LolaProducerBuilder,
+    LolaProducerBuilder, LolaProviderInfo, LolaPublisher, LolaSampleMaybeUninit, LolaSampleMut,
 };
 pub use runtime::{LolaRuntimeImpl, RuntimeBuilderImpl};
 

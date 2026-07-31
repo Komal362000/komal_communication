@@ -18,6 +18,8 @@ load(
     "unit",
 )
 
+visibility(["//..."])
+
 def score_baselibs_stub(
         name,
         scope_path,

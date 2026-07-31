@@ -124,7 +124,7 @@ int ExecuteWithReconnect()
         transport.Shutdown();
     }
 
-    // Pause in order to let app1 detect the disconnect
+    // Pause in order to let app1 handle the disconnect
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
     // Reconnect and send message

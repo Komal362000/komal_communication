@@ -11,6 +11,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # *******************************************************************************
 
+visibility(["public"])
+
 def _make_configs(ctx):
     config_json = ctx.file.config_json_path
     mw_com_config = ctx.file.mw_com_config_path

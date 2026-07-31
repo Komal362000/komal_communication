@@ -17,11 +17,9 @@ rust_library(
     name = "com-api-runtime-mock",
     srcs = ["runtime.rs"],
     edition = "2024",
-    visibility = [
-        "//visibility:public",  # platform_only
-    ],
+    visibility = ["//score/mw/com:__subpackages__"],
     deps = [
-        "//score/mw/com/impl/rust/com-api/com-api-concept",
+        "//score/mw/com/rust/score_com_concept",
         "@score_communication_crate_index//:futures",
     ],
 )

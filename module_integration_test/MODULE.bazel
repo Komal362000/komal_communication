@@ -4,14 +4,23 @@ local_path_override(
     path = "..",
 )
 
-bazel_dep(name = "rules_cc", version = "0.1.5")
+bazel_dep(name = "rules_cc", version = "0.2.17")
 bazel_dep(name = "score_baselibs", version = "0.2.9")
-single_version_override(
+git_override(
     module_name = "score_baselibs",
+    commit = "8b26bb6faa1cf639adeeef73121edf02aae53aa1",
     patch_strip = 1,
     # Patch baselibs with a QNX8 workaround for poll
     # until a fix is provided by the QNX SDP
     patches = ["//:restore_qnx8_poll_workaround.patch"],
+    remote = "https://github.com/eclipse-score/baselibs.git",
+)
+
+bazel_dep(name = "score_crates", version = "0.0.10", repo_name = "score_communication_crate_index")
+git_override(
+    module_name = "score_crates",
+    commit = "4656dda8f04a3d88c8089f63111195840cfbd9e3",
+    remote = "https://github.com/eclipse-score/score-crates.git",
 )
 
 bazel_dep(name = "lobster", version = "1.0.3")

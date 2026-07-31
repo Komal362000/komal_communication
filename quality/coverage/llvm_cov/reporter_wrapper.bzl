@@ -13,6 +13,8 @@
 
 """Executable wrapper rule for coverage reporter."""
 
+visibility(["//..."])
+
 def _reporter_wrapper_impl(ctx):
     launcher = ctx.actions.declare_file(ctx.label.name + ".sh")
 

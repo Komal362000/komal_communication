@@ -14,6 +14,8 @@
 load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files")
 load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
 
+visibility(["//..."])
+
 def pkg_application(name, app_name, bin = [], etc = [], etc_deps = [], **kwargs):
     pkg_files(
         name = "{}_binary".format(name),

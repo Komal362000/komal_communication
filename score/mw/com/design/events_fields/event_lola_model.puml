@@ -298,7 +298,7 @@ class "<<SharedMemory>>\nlola::EventSlotStatus" {
   +IsTimeStampBetween(EventTimeStamp min, EventTimeStamp max): bool
 }
 
-class EventDataControlComposite<memory::shared::AtomicIndirectorType> {
+class EventDataControlComposite<concurrency::AtomicIndirectorType> {
   -asil_qm_control_local_: ProviderEventDataControlLocalView<>&
   -asil_b_control_local_: ProviderEventDataControlLocalView<>*
   +EventDataControlComposite(asil_qm_control_local: ProviderEventDataControlLocalView<>&)

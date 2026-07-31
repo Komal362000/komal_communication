@@ -71,7 +71,7 @@ enum class FailureMode
 // runtime since we don't currently have infrastructure for compile time testing. When compile time testing is enabled
 // in SWP-46885, we can remove FailureMode and the runtime tests and replace them with compile time tests.
 template <bool condition, FailureMode failure_mode>
-void CompileOrRuntimeAssert(const char* message)
+void CompileOrRuntimeAssert([[maybe_unused]] const char* message)
 {
     if constexpr (failure_mode == FailureMode::COMPILE_TIME)
     {

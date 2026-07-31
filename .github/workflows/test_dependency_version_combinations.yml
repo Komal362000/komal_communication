@@ -1,0 +1,200 @@
+# *******************************************************************************
+# Copyright (c) 2026 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+name: "Test Dependency Version Combinations (Host)"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/test_dependency_version_combinations.yml"
+      - "quality/dependency_compatibility_checker/**"
+  schedule:
+    - cron: "0 0 * * *"   # nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate-matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.gen.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: ./.github/actions/00_infrastructure/prepare_bazel_environment
+        with:
+          disk-cache: ""
+          ubuntu-snapshot-mirror-url: ${{ secrets.UBUNTU_SNAPSHOT_MIRROR_URL }}
+
+      - id: gen
+        run: |
+          MATRIX="$(bazel run --ui_event_filters=-info,-stdout --noshow_progress \
+            --lockfile_mode=off \
+            //quality/dependency_compatibility_checker:generate_matrix -- \
+            --config "$PWD/quality/dependency_compatibility_checker/config.yaml")"
+          echo "matrix=${MATRIX}" >> "$GITHUB_OUTPUT"
+
+  build-and-test:
+    needs: generate-matrix
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.generate-matrix.outputs.matrix) }}
+    env:
+      USE_BAZEL_VERSION: ${{ matrix.bazel }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: ./.github/actions/00_infrastructure/prepare_bazel_environment
+        with:
+          disk-cache: ""
+          ubuntu-snapshot-mirror-url: ${{ secrets.UBUNTU_SNAPSHOT_MIRROR_URL }}
+
+      - name: Rewrite, resolve, build & test
+        continue-on-error: true
+        env:
+          COMBINATION_JSON: ${{ toJSON(matrix) }}
+        run: |
+          set +e
+          mkdir -p matrix-results
+          LOG="matrix-results/log-${{ matrix.index }}.txt"
+          FAILED_STAGE=""
+          # Run one stage, teeing its output to the combo log. On the first
+          # failure record the stage name so the report can pinpoint the cause.
+          run_stage() {
+            local name="$1"; shift
+            [ -n "$FAILED_STAGE" ] && return 0
+            echo "===== STAGE: ${name} =====" | tee -a "$LOG"
+            "$@" 2>&1 | tee -a "$LOG"
+            local rc=${PIPESTATUS[0]}
+            if [ "$rc" -ne 0 ]; then
+              FAILED_STAGE="$name"
+              echo "===== STAGE ${name} FAILED (rc=${rc}) =====" | tee -a "$LOG"
+            fi
+          }
+          # The rewrite intentionally mutates MODULE.bazel, so the committed
+          # lockfile is stale by design. Disable lockfile verification for the
+          # resolve/build/test steps (repo .bazelrc sets --lockfile_mode=error).
+          run_stage rewrite bazel run --lockfile_mode=off \
+            //quality/dependency_compatibility_checker:module_rewriter -- \
+            --module-file "$PWD/MODULE.bazel" \
+            --config "$PWD/quality/dependency_compatibility_checker/config.yaml" \
+            --combination-json "$COMBINATION_JSON"
+          run_stage deps bazel mod deps --lockfile_mode=off
+          run_stage build bazel build //... --lockfile_mode=off ${{ matrix.flags }}
+          run_stage test bazel test //... --build_tests_only --lockfile_mode=off ${{ matrix.flags }}
+          if [ -z "$FAILED_STAGE" ]; then
+            echo "BUILD_STATUS=success" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_STATUS=failure" >> "$GITHUB_ENV"
+            echo "FAILED_STAGE=${FAILED_STAGE}" >> "$GITHUB_ENV"
+            echo "::error::combination ${{ matrix.index }} failed at stage: ${FAILED_STAGE}"
+          fi
+
+      - name: Write result JSON
+        if: always()
+        env:
+          COMBO: ${{ toJSON(matrix) }}
+        run: |
+          mkdir -p matrix-results
+          python3 - <<'PY'
+          import json, os
+          combo = json.loads(os.environ["COMBO"])
+          index = combo["index"]
+          versions = {k: v for k, v in combo.items()
+                      if k not in ("index", "has_patches", "flags")}
+          result = {
+              "index": index,
+              "versions": versions,
+              "build_status": os.environ.get("BUILD_STATUS", "failure"),
+              "has_patches": bool(combo.get("has_patches", False)),
+              "failed_stage": os.environ.get("FAILED_STAGE", ""),
+          }
+          with open(f"matrix-results/result-{index}.json", "w", encoding="utf-8") as fh:
+              json.dump(result, fh, indent=2)
+          print(result)
+          PY
+
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result-${{ matrix.index }}
+          path: |
+            matrix-results/result-${{ matrix.index }}.json
+            matrix-results/log-${{ matrix.index }}.txt
+          if-no-files-found: warn
+
+  report:
+    needs: build-and-test
+    if: always()
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6.0.2
+
+      - uses: ./.github/actions/00_infrastructure/prepare_bazel_environment
+        with:
+          disk-cache: ""
+          ubuntu-snapshot-mirror-url: ${{ secrets.UBUNTU_SNAPSHOT_MIRROR_URL }}
+
+      - name: Download all results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: result-*
+          path: matrix-results
+          merge-multiple: true
+
+      - name: Render report (never fails, so artifacts always upload)
+        run: |
+          bazel run --lockfile_mode=off //quality/dependency_compatibility_checker:generate_report -- \
+            --results-dir "$PWD/matrix-results" \
+            --config "$PWD/quality/dependency_compatibility_checker/config.yaml" \
+            --output-dir "$PWD/matrix-results" \
+            --fail-on never
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compatibility-report
+          path: |
+            matrix-results/report.html
+            matrix-results/summary.json
+          if-no-files-found: error
+
+      - name: Enforce status (gate after upload)
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys
+          summary = json.load(open("matrix-results/summary.json"))
+          red = summary["totals"]["red"]
+          if red:
+              # Surface which combinations are red and at which stage they failed.
+              for path in sorted(glob.glob("matrix-results/result-*.json")):
+                  data = json.load(open(path))
+                  if data.get("build_status") != "success":
+                      stage = data.get("failed_stage") or "unknown"
+                      print(f"::error::combo {data['index']} {data['versions']} "
+                            f"failed at stage '{stage}'")
+              print(f"::error::{red} combination(s) failed to build (red)")
+              sys.exit(1)
+          print("No red combinations")
+          PY

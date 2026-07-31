@@ -20,9 +20,7 @@ cc_library(
     srcs = ["registry_bridge_macro.cpp"],
     hdrs = ["registry_bridge_macro.h"],
     features = COMPILER_WARNING_FEATURES,
-    visibility = [
-        "//visibility:public",  # platform_only
-    ],
+    visibility = ["//score/mw/com:__subpackages__"],
     deps = [
         "//score/mw/com:runtime",
         "//score/mw/com:runtime_configuration",
@@ -73,5 +71,6 @@ rust_library(
     deps = [
         ":bridge_ffi_rs",
         "//score/mw/com/impl/plumbing/rust:sample_ptr_rs",
+        "@score_baselibs//src/log/score_log",
     ],
 )

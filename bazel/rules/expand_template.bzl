@@ -3,6 +3,8 @@ Wrapper rule around the expand_template action with support for location
 expansion.
 """
 
+visibility(["//..."])
+
 def _expand_template_impl(ctx):
     expanded_substitutions = {}
     expanded_substitutions.update(ctx.attr.substitutions)

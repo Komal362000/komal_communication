@@ -26,7 +26,7 @@
 
 use bigdata_com_api_gen::{BigDataInterface, MapApiLanesStamped};
 use clap::Parser;
-use com_api::{
+use score_com::{
     Builder, FindServiceSpecifier, InstanceSpecifier, LolaRuntimeBuilderImpl, Runtime,
     RuntimeBuilder, SampleContainer, ServiceDiscovery, Subscriber, Subscription,
 };

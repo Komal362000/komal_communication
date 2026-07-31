@@ -14,6 +14,7 @@
 
 import os
 import pwd
+import re
 import subprocess
 
 EXCLUDED_PUBLIC_TARGETS = {
@@ -25,11 +26,93 @@ EXCLUDED_PUBLIC_TARGETS = {
     "//third_party/score_baselibs:os_rst",
 }
 
+# Matches the visibility() load-visibility built-in in .bzl files. Bazel
+# accepts both a list argument (e.g. visibility(["//foo", "public"])) and a
+# single string argument (e.g. visibility("//...")), so capture either form.
+_BZL_VISIBILITY_CALL_RE = re.compile(
+    r"\bvisibility\s*\(\s*(?P<items>\[.*?\]|['\"].*?['\"])\s*\)", re.DOTALL
+)
+
+# Matches public entries inside the visibility() argument in .bzl files.
+_BZL_PUBLIC_VISIBILITY_ITEM_RE = re.compile(r'["\'](?:public|//visibility:public)["\']')
+
+# Directories (relative to repo root) that should never be scanned for .bzl files.
+_SKIP_DIRS = {".git", "bazel-bin", "bazel-out", "bazel-testlogs"}
+
+
+def _get_public_load_visibility_targets(repo_root):
+    """Return labels for .bzl files that are publicly loadable.
+
+    Bazel's load visibility (set via the visibility() built-in inside a .bzl
+    file) controls which packages may load() the file.  Unlike target
+    visibility, it is not exposed through bazel query's attr() predicate, so
+    we detect it by scanning .bzl files directly.
+
+    A .bzl file is considered public if:
+    - It has no visibility(...) declaration (Bazel default is public), or
+    - It explicitly declares public visibility, i.e. visibility("public"),
+      visibility(["public"]) (or the "//visibility:public" spelling).
+
+    Any other declaration (e.g. visibility("//...") which restricts loading to
+    the main repository) is treated as non-public.
+    """
+    public_bzl_targets = []
+    for dirpath, dirnames, filenames in os.walk(repo_root):
+        rel_dir = os.path.relpath(dirpath, repo_root)
+        # Skip Bazel-managed symlink trees, hidden directories, and any
+        # directory that is itself a symlink.
+        dirnames[:] = [
+            d
+            for d in dirnames
+            if d not in _SKIP_DIRS
+            and not d.startswith(".")
+            and not os.path.islink(os.path.join(dirpath, d))
+        ]
+
+        for filename in filenames:
+            if not filename.endswith(".bzl"):
+                continue
+            filepath = os.path.join(dirpath, filename)
+            try:
+                with open(filepath, encoding="utf-8", errors="replace") as fh:
+                    content = fh.read()
+            except OSError:
+                continue
+
+            # Strip comment lines before matching to avoid false positives.
+            non_comment_content = "\n".join(
+                line for line in content.splitlines() if not line.lstrip().startswith("#")
+            )
+            visibility_match = _BZL_VISIBILITY_CALL_RE.search(non_comment_content)
+            if visibility_match:
+                visibility_items = visibility_match.group("items")
+                if not _BZL_PUBLIC_VISIBILITY_ITEM_RE.search(visibility_items):
+                    continue
+
+            # Convert filesystem path to a canonical Bazel label.
+            if rel_dir == ".":
+                label = f"//:{filename}"
+            else:
+                # Normalise path separators on all platforms.
+                pkg = rel_dir.replace(os.sep, "/")
+                label = f"//{pkg}:{filename}"
+
+            if label not in EXCLUDED_PUBLIC_TARGETS:
+                public_bzl_targets.append(label)
+
+    return public_bzl_targets
+
 
 def get_all_public_targets(repo_root):
-    """Get sorted list of all public targets in the repository using bazel query.
+    """Get sorted list of all public targets in the repository.
 
-    This includes both explicitly declared and macro-generated targets.
+    Combines two sources:
+    - BUILD rule/file targets with ``visibility = ["//visibility:public"]``
+      (found via bazel query).
+    - ``.bzl`` files that are publicly loadable (explicitly public visibility
+      or no ``visibility([...])`` declaration, since Bazel's default is
+      public). These are found by scanning source files directly, because bazel
+      query's ``attr()`` predicate does not cover load visibility.
     """
     cmd = [
         "bazel",
@@ -37,6 +120,11 @@ def get_all_public_targets(repo_root):
         "attr(visibility, //visibility:public, //...)",
         "--output=label",
         "--keep_going",
+        # The dependency-compatibility checker rewrites MODULE.bazel to pin
+        # alternative versions, which makes the committed lockfile stale. Skip
+        # lockfile verification so this nested query still resolves; on an
+        # unmodified tree the lockfile matches and the result is unchanged.
+        "--lockfile_mode=off",
     ]
 
     env = os.environ.copy()
@@ -63,9 +151,13 @@ def get_all_public_targets(repo_root):
         env=env,
         check=False,
     )
-    targets = sorted(
+    target_visibility_targets = [
         line.strip()
         for line in result.stdout.splitlines()
         if line.strip() and line.strip() not in EXCLUDED_PUBLIC_TARGETS
-    )
-    return targets
+    ]
+
+    load_visibility_targets = _get_public_load_visibility_targets(repo_root)
+
+    all_targets = sorted(set(target_visibility_targets) | set(load_visibility_targets))
+    return all_targets

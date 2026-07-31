@@ -27,7 +27,7 @@ use bigdata_com_api_gen::{
     MixedPrimitivesPayload, NestedStruct, Point, Point3D, SensorData, SimpleStruct, VehicleState,
 };
 use clap::Parser;
-use com_api::{
+use score_com::{
     Builder, FindServiceSpecifier, InstanceSpecifier, LolaRuntimeBuilderImpl, Result, Runtime,
     RuntimeBuilder, SampleContainer, ServiceDiscovery, Subscriber, Subscription,
 };

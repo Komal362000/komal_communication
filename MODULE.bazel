@@ -14,6 +14,7 @@ module(name = "score_communication")
 
 # Dependencies that will get propagated to our users as transitive dependencies
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "boost.container", version = "1.83.0.bcr.4")
 bazel_dep(name = "boost.interprocess", version = "1.83.0.bcr.4")
 bazel_dep(name = "boost.program_options", version = "1.83.0.bcr.4")
 bazel_dep(name = "download_utils", version = "1.2.2")
@@ -27,16 +28,23 @@ bazel_dep(name = "rules_rust", version = "0.68.1-score")
 # Cannot be dev-dependency due to being required in "load" statements
 bazel_dep(name = "score_qnx_unit_tests", version = "0.2.0")
 bazel_dep(name = "score_baselibs", version = "0.2.9")
-single_version_override(
+git_override(
     module_name = "score_baselibs",
+    commit = "8b26bb6faa1cf639adeeef73121edf02aae53aa1",
     patch_strip = 1,
     # Patch baselibs with a QNX8 workaround for poll
     # until a fix is provided by the QNX SDP
     patches = ["//third_party/score_baselibs:restore_qnx8_poll_workaround.patch"],
+    remote = "https://github.com/eclipse-score/baselibs.git",
 )
 
 bazel_dep(name = "score_bazel_platforms", version = "0.1.2")
 bazel_dep(name = "score_crates", version = "0.0.10", repo_name = "score_communication_crate_index")
+git_override(
+    module_name = "score_crates",
+    commit = "4656dda8f04a3d88c8089f63111195840cfbd9e3",
+    remote = "https://github.com/eclipse-score/score-crates.git",
+)
 
 download_archive = use_repo_rule("@download_utils//download/archive:defs.bzl", "download_archive")
 
@@ -103,9 +111,13 @@ SCORE_GCC_MINIMAL_WARNING_COMPILE_FLAGS = [
     "-Wall",
     "-Wno-error=deprecated-declarations",
     "-Wno-error=cpp",
+    "-Wno-builtin-macro-redefined",
     "-Wno-format-y2k",
     "-Wno-free-nonheap-object",
     "-Wno-maybe-uninitialized",
+    "-Wno-unused-macros",
+    "-Wno-unused-parameter",
+    "-Wno-unused-variable",
     "-Wunused-but-set-parameter",
 ]
 
@@ -165,6 +177,12 @@ use_repo(
 )
 
 bazel_dep(name = "score_itf", version = "0.5.0", dev_dependency = True)
+git_override(
+    module_name = "score_itf",
+    commit = "54cab4f6ebc1fb40d0b93a8c1a451a03bda77b6a",
+    remote = "https://github.com/eclipse-score/itf.git",
+)
+
 bazel_dep(name = "score_rules_imagefs", version = "0.0.3", dev_dependency = True)
 
 imagefs = use_extension("@score_rules_imagefs//extensions:imagefs.bzl", "imagefs", dev_dependency = True)
@@ -279,8 +297,8 @@ llvm = use_extension(
 llvm.toolchain(
     cxx_standard = {"": "c++17"},
     extra_enabled_features = [
-        "//quality/compiler_warnings:default_flags",
-        "//quality/compiler_warnings:default_link_flags",
+        "//quality/compiler_warnings/clang:default_flags",
+        "//quality/compiler_warnings:fortify_source",
         "//quality/compiler_warnings/clang:minimal_warnings",
     ],
     extra_known_features = [
@@ -289,8 +307,10 @@ llvm.toolchain(
         "@score_cpp_policies//sanitizers/features:ubsan",
         "@score_cpp_policies//sanitizers/features:lsan",
         "@score_cpp_policies//sanitizers/features:tsan",
+        "//quality/compiler_warnings:minimal_warnings",
+        "//quality/compiler_warnings:strict_warnings",
         "//quality/compiler_warnings:treat_warnings_as_errors",
-        "//quality/compiler_warnings:additional_warnings",
+        "//quality/compiler_warnings/clang:additional_warnings",
         "//quality/compiler_warnings/clang:strict_warnings",
         "//quality/compiler_warnings/clang:strict_warnings_no_error",
         "//quality/compiler_warnings/clang:third_party_warnings",
@@ -316,7 +336,7 @@ llvm.sysroot(
 )
 use_repo(llvm, "llvm_toolchain", "llvm_toolchain_llvm")
 
-bazel_dep(name = "score_toolchains_rust", version = "0.9.1", dev_dependency = True)
+bazel_dep(name = "score_toolchains_rust", version = "0.9.2", dev_dependency = True)
 
 gcc_ferrocene = use_extension(
     "@score_toolchains_rust//extensions:ferrocene_toolchain_ext.bzl",
@@ -325,9 +345,9 @@ gcc_ferrocene = use_extension(
 )
 gcc_ferrocene.toolchain(
     name = "ferrocene_x86_64_unknown_linux_gnu_llvm",
-    coverage_tools_sha256 = "497958e925bc94833ea226d68f6d5ba38bd890f571c73e230141d2923e30dd94",
+    coverage_tools_sha256 = "f4b1cdcaf644b3dac429dfc50c674cde8f9620e1a563e3dcdfb313a7ce68c888",
     coverage_tools_strip_prefix = "779fbed05ae9e9fe2a04137929d99cc9b3d516fd/x86_64-unknown-linux-gnu",
-    coverage_tools_url = "https://github.com/eclipse-score/ferrocene_toolchain_builder/releases/download/1.0.1/coverage-tools-779fbed05ae9e9fe2a04137929d99cc9b3d516fd-x86_64-unknown-linux-gnu.tar.gz",
+    coverage_tools_url = "https://github.com/eclipse-score/ferrocene_toolchain_builder/releases/download/1.3.0/coverage-tools-779fbed05ae9e9fe2a04137929d99cc9b3d516fd-x86_64-unknown-linux-gnu.tar.gz",
     exec_triple = "x86_64-unknown-linux-gnu",
     extra_rustc_flags = [
         "-Clink-arg=-Wl,--no-as-needed",
@@ -433,20 +453,45 @@ bazel_dep(name = "rules_pkg", version = "1.2.0", dev_dependency = True)
 
 http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+# CodeQL Coding Standards release used for BOTH the query sources / report
+# scripts (@codeql_coding_standards) and the pre-compiled query pack
+# (@codeql_coding_standards_compiled). These two must always come from the same
+# release, so their version is defined once here and both derive their download
+# URL from it.
+CODING_STANDARDS_VERSION = "2.62.0"
+
+# The version of this tool needs to be deduced by the mentioned compatible version of the codeql_coding_standards release!
 http_archive(
     name = "codeql_bundle",
     build_file = "//third_party/codeql:codeql.BUILD",
-    sha256 = "0144d4bc415aee0d5638119dfb626a2d8689e2ff21758ba211a3984862b8522c",
-    url = "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.26.0/codeql-bundle-linux64.tar.gz",
+    sha256 = "a94f674bb3c23ea5e9a2ad06b64847dd0277b15014d2517ecd9c41c88e6caa65",
+    url = "https://github.com/github/codeql-action/releases/download/codeql-bundle-v2.21.4/codeql-bundle-linux64.tar.gz",
 )
 
-git_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
-git_repository(
+http_archive(
     name = "codeql_coding_standards",
     build_file = "//third_party/codeql:codeql_coding_standards.BUILD",
-    commit = "06dc6bc32b05152fbe94dbf341a3e854574c9df5",  # v2.61.0
-    remote = "https://github.com/github/codeql-coding-standards.git",
+    patch_args = ["-p1"],
+    patches = ["//third_party/codeql:codeql_coding_standards_misra.patch"],
+    sha256 = "2aa4f4c3efd87eb24fe33bbef7f982b616a6653ae4f2a67ece268ef50cdd1ff3",
+    strip_prefix = "codeql-coding-standards-{version}".format(version = CODING_STANDARDS_VERSION),
+    urls = ["https://github.com/github/codeql-coding-standards/archive/refs/tags/v{version}.tar.gz".format(version = CODING_STANDARDS_VERSION)],
+)
+
+# The MISRA C++ analysis runs a pre-compiled query pack published with the
+# codeql-coding-standards release (see codeql_release_pack.bzl). This avoids
+# compiling the queries locally while keeping the analysis hermetic (pinned by
+# sha256) and aligned with the pinned coding_standards version above.
+codeql_release_pack = use_repo_rule(
+    "//third_party/codeql:codeql_release_pack.bzl",
+    "codeql_release_pack",
+)
+
+codeql_release_pack(
+    name = "codeql_coding_standards_compiled",
+    pack_tarball = "misra-cpp-coding-standards.tgz",
+    sha256 = "775e34cb36e522c30f3c4381c0758a7fbe29e6c9a5428eb6c9ad67ebd145cb0b",
+    urls = ["https://github.com/github/codeql-coding-standards/releases/download/v{version}/coding-standards-codeql-packs.zip".format(version = CODING_STANDARDS_VERSION)],
 )
 
 register_toolchains(

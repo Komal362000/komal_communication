@@ -13,6 +13,8 @@
 #include "score/mw/com/impl/plumbing/proxy_method_binding_factory.h"
 #include "score/mw/com/impl/bindings/lola/test/proxy_event_test_resources.h"
 #include "score/mw/com/impl/bindings/mock_binding/proxy.h"
+#include "score/mw/com/impl/configuration/lola_event_instance_deployment.h"
+#include "score/mw/com/impl/configuration/lola_field_instance_deployment.h"
 #include "score/mw/com/impl/configuration/lola_service_instance_deployment.h"
 #include "score/mw/com/impl/configuration/lola_service_instance_id.h"
 #include "score/mw/com/impl/configuration/quality_type.h"
@@ -42,6 +44,9 @@ using TestSampleType = std::uint8_t;
 constexpr auto kDummyMethodName{"Method1"};
 constexpr std::uint16_t kDummyMethodId{5U};
 
+constexpr auto kDummyFieldName{"Field1"};
+constexpr std::uint16_t kDummyFieldId{7U};
+
 constexpr uint16_t kInstanceId = 0x31U;
 const LolaServiceId kServiceId{1U};
 const auto kInstanceSpecifier = InstanceSpecifier::Create(std::string{"/my_dummy_instance_specifier"}).value();
@@ -56,12 +61,48 @@ const LolaServiceInstanceDeployment kLolaServiceInstanceDeployment{
 
 const LolaServiceTypeDeployment kLolaServiceTypeDeployment{kServiceId, {}, {}, {{kDummyMethodName, kDummyMethodId}}};
 
+const LolaEventInstanceDeployment kDummyFieldEventInstanceDeployment{
+    LolaEventInstanceDeployment::SampleSlotCountType{1U},
+    LolaEventInstanceDeployment::SubscriberCountType{1U},
+    std::uint8_t{1U},
+    true,
+    LolaEventInstanceDeployment::TracingSlotSizeType{0U}};
+
+const LolaServiceTypeDeployment kLolaServiceTypeDeploymentWithField{kServiceId,
+                                                                    {},
+                                                                    {{kDummyFieldName, kDummyFieldId}},
+                                                                    {{kDummyMethodName, kDummyMethodId}}};
+
 constexpr auto kQualityType = QualityType::kASIL_B;
 ConfigurationStore kConfigStoreAsilB{kInstanceSpecifier,
                                      make_ServiceIdentifierType("/a/service/somewhere/out/there", 13U, 37U),
                                      kQualityType,
                                      kLolaServiceTypeDeployment,
                                      kLolaServiceInstanceDeployment};
+
+const LolaServiceInstanceDeployment kLolaServiceInstanceDeploymentWithField{
+    LolaServiceInstanceId{kInstanceId},
+    {},
+    {{kDummyFieldName, LolaFieldInstanceDeployment{LolaEventInstanceDeployment{{1U}, {3U}, 1U, true, 0}, true, true}}},
+    {{kDummyMethodName, LolaMethodInstanceDeployment{kQueueSize, true}}}};
+
+ConfigurationStore kConfigStoreWithFieldAsilB{kInstanceSpecifier,
+                                              make_ServiceIdentifierType("/a/service/somewhere/out/there", 13U, 37U),
+                                              kQualityType,
+                                              kLolaServiceTypeDeploymentWithField,
+                                              kLolaServiceInstanceDeploymentWithField};
+
+enum class GetterStatus
+{
+    kEnabled,
+    kDisabled
+};
+
+enum class SetterStatus
+{
+    kEnabled,
+    kDisabled
+};
 
 class ProxyMethodFactoryFixture : public lola::ProxyMockedMemoryFixture
 {
@@ -72,14 +113,39 @@ class ProxyMethodFactoryFixture : public lola::ProxyMockedMemoryFixture
         return kConfigStoreAsilB.GetHandle();
     }
 
+    HandleType GetValidLoLaHandleWithField()
+    {
+        return kConfigStoreWithFieldAsilB.GetHandle();
+    }
+
     HandleType GetBlankBindingHandle()
     {
         const auto instance_identifier = dummy_instance_identifier_builder_.CreateBlankBindingInstanceIdentifier();
         return make_HandleType(instance_identifier, ServiceInstanceId{LolaServiceInstanceId{kInstanceId}});
     }
 
+    HandleType GetFieldHandle(const GetterStatus getter_status, const SetterStatus setter_status)
+    {
+        const LolaServiceInstanceDeployment lola_service_instance_deployment_with_field{
+            LolaServiceInstanceId{kInstanceId},
+            {},
+            {{kDummyFieldName,
+              LolaFieldInstanceDeployment{kDummyFieldEventInstanceDeployment,
+                                          getter_status == GetterStatus::kEnabled,
+                                          setter_status == SetterStatus::kEnabled}}},
+            {}};
+        field_config_store_ =
+            std::make_unique<ConfigurationStore>(kInstanceSpecifier,
+                                                 make_ServiceIdentifierType("/a/service/somewhere/out/there", 13U, 37U),
+                                                 kQualityType,
+                                                 kLolaServiceTypeDeploymentWithField,
+                                                 lola_service_instance_deployment_with_field);
+        return field_config_store_->GetHandle();
+    }
+
   private:
     DummyInstanceIdentifierBuilder dummy_instance_identifier_builder_{};
+    std::unique_ptr<ConfigurationStore> field_config_store_{nullptr};
 };
 
 template <typename MethodType>
@@ -106,6 +172,25 @@ TYPED_TEST(ProxyMethodFactoryTypedFixture, CanConstructLolaProxyMethod)
     // Then a valid binding can be created
     ASSERT_TRUE(proxy_method.has_value());
     ASSERT_NE(proxy_method.value(), nullptr);
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture, CanConstructFieldGetAndSetMethods)
+{
+    // Given a valid lola binding whose deployment carries a field named kDummyFieldName
+    const auto handle = this->GetValidLoLaHandleWithField();
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+    using MethodSignature = TypeParam;
+
+    // When creating a binding for both the Get and the Set of that field
+    for (const auto method_type : {MethodType::kGet, MethodType::kSet})
+    {
+        auto proxy_method =
+            ProxyMethodBindingFactory<MethodSignature>::Create(handle, *this->proxy_, kDummyFieldName, method_type);
+
+        // Then a valid binding is created
+        ASSERT_TRUE(proxy_method.has_value());
+        ASSERT_NE(proxy_method.value(), nullptr);
+    }
 }
 
 TYPED_TEST(ProxyMethodFactoryTypedFixture, ConstructingLolaMethodBindingWhichIsDisabledInConfigurationReturnsNullptr)
@@ -223,6 +308,20 @@ TYPED_TEST(ProxyMethodFactoryTypedFixture, GetQueueSizeTerminatesForMethodNotInL
         score::cpp::ignore = detail::GetQueueSize(handle, wrong_name, MethodType::kMethod));
 }
 
+TYPED_TEST(ProxyMethodFactoryTypedFixture, ConstructingLolaMethodBindingWithUnknownMethodTypeTerminates)
+{
+    // Given a valid lola binding
+    const auto handle = this->GetValidLoLaHandle();
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // When creating a ProxyMethod using MethodBindingFactory with MethodType::kUnknown
+    // Then the program terminates
+    using MethodSignature = TypeParam;
+    EXPECT_DEATH(score::cpp::ignore = ProxyMethodBindingFactory<MethodSignature>::Create(
+                     handle, *this->proxy_, kDummyMethodName, MethodType::kUnknown),
+                 ".*");
+}
+
 TYPED_TEST(ProxyMethodFactoryTypedFixture, GetQueueSizeTerminatesForMethodInLolaDeploymentWithoutQueueSize)
 {
     // Given a handle to a valid lola deployment which contains a method with empty QueueSize
@@ -243,6 +342,94 @@ TYPED_TEST(ProxyMethodFactoryTypedFixture, GetQueueSizeTerminatesForMethodInLola
     // Then the program terminates
     SCORE_LANGUAGE_FUTURECPP_ASSERT_CONTRACT_VIOLATED(
         score::cpp::ignore = detail::GetQueueSize(handle, kDummyMethodName, MethodType::kMethod));
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture, CanConstructLolaProxyFieldGetMethodWhenGetIsEnabled)
+{
+    // Given a valid lola binding with a field whose Get method is enabled in the configuration
+    const auto handle = this->GetFieldHandle(GetterStatus::kEnabled, SetterStatus::kDisabled);
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // When creating a field Get ProxyMethod using MethodBindingFactory
+    using MethodSignature = TypeParam;
+    auto proxy_method =
+        ProxyMethodBindingFactory<MethodSignature>::Create(handle, *this->proxy_, kDummyFieldName, MethodType::kGet);
+
+    // Then a valid binding can be created
+    ASSERT_TRUE(proxy_method.has_value());
+    ASSERT_NE(proxy_method.value(), nullptr);
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture, CanConstructLolaProxyFieldSetMethodWhenSetIsEnabled)
+{
+    // Given a valid lola binding with a field whose Set method is enabled in the configuration
+    const auto handle = this->GetFieldHandle(GetterStatus::kDisabled, SetterStatus::kEnabled);
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // When creating a field Set ProxyMethod using MethodBindingFactory
+    using MethodSignature = TypeParam;
+    auto proxy_method =
+        ProxyMethodBindingFactory<MethodSignature>::Create(handle, *this->proxy_, kDummyFieldName, MethodType::kSet);
+
+    // Then a valid binding can be created
+    ASSERT_TRUE(proxy_method.has_value());
+    ASSERT_NE(proxy_method.value(), nullptr);
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture,
+           ConstructingFieldGetMethodBindingWhichIsDisabledInConfigurationReturnsNullptr)
+{
+    // Given a valid lola binding with a field whose Get method is disabled in the configuration
+    const auto handle = this->GetFieldHandle(GetterStatus::kDisabled, SetterStatus::kEnabled);
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // When creating a field Get ProxyMethod using MethodBindingFactory
+    using MethodSignature = TypeParam;
+    auto proxy_method =
+        ProxyMethodBindingFactory<MethodSignature>::Create(handle, *this->proxy_, kDummyFieldName, MethodType::kGet);
+
+    // Then a null pointer is returned
+    ASSERT_TRUE(proxy_method.has_value());
+    EXPECT_EQ(proxy_method.value(), nullptr);
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture,
+           ConstructingFieldSetMethodBindingWhichIsDisabledInConfigurationReturnsNullptr)
+{
+    // Given a valid lola binding with a field whose Set method is disabled in the configuration
+    const auto handle = this->GetFieldHandle(GetterStatus::kEnabled, SetterStatus::kDisabled);
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // When creating a field Set ProxyMethod using MethodBindingFactory
+    using MethodSignature = TypeParam;
+    auto proxy_method =
+        ProxyMethodBindingFactory<MethodSignature>::Create(handle, *this->proxy_, kDummyFieldName, MethodType::kSet);
+
+    // Then a null pointer is returned
+    ASSERT_TRUE(proxy_method.has_value());
+    EXPECT_EQ(proxy_method.value(), nullptr);
+}
+
+TYPED_TEST(ProxyMethodFactoryTypedFixture, ConstructingFieldGetMethodWithInstanceDeploymentWithoutFieldTerminates)
+{
+    // Given a handle to a valid lola deployment which does not contain the field
+    const LolaServiceInstanceDeployment lola_service_instance_deployment_without_field{
+        LolaServiceInstanceId{kInstanceId}, {}, {}, {}};
+    ConfigurationStore config_store_without_field{
+        kInstanceSpecifier,
+        make_ServiceIdentifierType("/a/service/somewhere/out/there", 13U, 37U),
+        kQualityType,
+        kLolaServiceTypeDeploymentWithField,
+        lola_service_instance_deployment_without_field};
+    const auto handle = config_store_without_field.GetHandle();
+    this->InitialiseProxyWithConstructor(handle.GetInstanceIdentifier());
+
+    // when creating a field Get ProxyMethod using MethodBindingFactory
+    // Then the program terminates
+    using MethodSignature = TypeParam;
+    EXPECT_DEATH(score::cpp::ignore = ProxyMethodBindingFactory<MethodSignature>::Create(
+                     handle, *this->proxy_, kDummyFieldName, MethodType::kGet),
+                 ".*");
 }
 
 }  // namespace score::mw::com::impl

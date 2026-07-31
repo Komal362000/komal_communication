@@ -13,6 +13,8 @@
 
 """Bazel rules for generating Sphinx RST files from Doxygen XML output."""
 
+visibility(["//..."])
+
 def _generate_api_rst_impl(ctx):
     """Implementation of the generate_api_rst rule.
 

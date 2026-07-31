@@ -36,10 +36,12 @@ use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 use std::sync::Arc;
 
-use com_api_concept::{
+use score_log as log;
+
+use score_com_concept::{
     AllocationFailureReason, Builder, CommData, Error, EventFailedReason, InstanceSpecifier,
-    Interface, Producer, ProducerBuilder, ProducerFailedReason, ProviderInfo, Result,
-    ServiceFailedReason,
+    Interface, Producer, ProducerBuilder, ProducerFailedReason, ProviderInfo, Publisher, Result,
+    SampleMaybeUninit, SampleMut, ServiceFailedReason,
 };
 
 use bridge_ffi_rs::*;
@@ -69,8 +71,18 @@ impl<B: FFIBridge> ProviderInfo for LolaProviderInfo<B> {
                 .skeleton_offer_service(self.skeleton_handle.0.handle.as_ptr())
         };
         if !status {
+            log::error!(
+                "Failed to offer service for interface: {} with instance specifier: {}",
+                self.interface_id,
+                self.instance_specifier.as_ref()
+            );
             return Err(Error::ServiceError(ServiceFailedReason::OfferServiceFailed));
         }
+        log::info!(
+            "Service offered successfully for interface: {} with instance specifier: {}",
+            self.interface_id,
+            self.instance_specifier.as_ref()
+        );
         Ok(())
     }
 
@@ -81,6 +93,11 @@ impl<B: FFIBridge> ProviderInfo for LolaProviderInfo<B> {
             self.bridge
                 .skeleton_stop_offer_service(self.skeleton_handle.0.handle.as_ptr())
         };
+        log::info!(
+            "Service stopped successfully for interface: {} with instance specifier: {}",
+            self.interface_id,
+            self.instance_specifier.as_ref()
+        );
         Ok(())
     }
 }
@@ -127,7 +144,7 @@ where
 }
 
 #[derive(Debug)]
-pub struct SampleMut<'a, T, B: FFIBridge>
+pub struct LolaSampleMut<'a, T, B: FFIBridge>
 where
     T: CommData + Debug,
 {
@@ -136,7 +153,7 @@ where
     lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T, B: FFIBridge> SampleMut<'a, T, B>
+impl<'a, T, B: FFIBridge> LolaSampleMut<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -165,7 +182,7 @@ where
     }
 }
 
-impl<'a, T, B: FFIBridge> Deref for SampleMut<'a, T, B>
+impl<'a, T, B: FFIBridge> Deref for LolaSampleMut<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -177,7 +194,7 @@ where
     }
 }
 
-impl<'a, T, B: FFIBridge> DerefMut for SampleMut<'a, T, B>
+impl<'a, T, B: FFIBridge> DerefMut for LolaSampleMut<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -187,7 +204,7 @@ where
     }
 }
 
-impl<'a, T, B: FFIBridge> com_api_concept::SampleMut<T> for SampleMut<'a, T, B>
+impl<'a, T, B: FFIBridge> SampleMut<T> for LolaSampleMut<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -206,14 +223,16 @@ where
                 )
         };
         if !status {
+            log::error!("Failed to send sample");
             return Err(Error::EventError(EventFailedReason::SendingDataFailed));
         }
+        log::debug!("Sample sent successfully");
         Ok(())
     }
 }
 
 #[derive(Debug)]
-pub struct SampleMaybeUninit<'a, T, B: FFIBridge>
+pub struct LolaSampleMaybeUninit<'a, T, B: FFIBridge>
 where
     T: CommData + Debug,
 {
@@ -222,7 +241,7 @@ where
     lifetime: PhantomData<&'a T>,
 }
 
-impl<'a, T, B: FFIBridge> SampleMaybeUninit<'a, T, B>
+impl<'a, T, B: FFIBridge> LolaSampleMaybeUninit<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -239,13 +258,13 @@ where
     }
 }
 
-impl<'a, T, B: FFIBridge> com_api_concept::SampleMaybeUninit<T> for SampleMaybeUninit<'a, T, B>
+impl<'a, T, B: FFIBridge> SampleMaybeUninit<T> for LolaSampleMaybeUninit<'a, T, B>
 where
     T: CommData + Debug,
 {
-    type SampleMut = SampleMut<'a, T, B>;
+    type SampleMut = LolaSampleMut<'a, T, B>;
 
-    fn write(mut self, val: T) -> SampleMut<'a, T, B> {
+    fn write(mut self, val: T) -> LolaSampleMut<'a, T, B> {
         let data_ptr = self
             .get_allocatee_data_ptr()
             .expect("Allocatee data pointer is null");
@@ -254,15 +273,15 @@ where
         // and we are writing the value of type T which is same as allocatee_ptr type
         data_ptr.write(val);
 
-        SampleMut {
+        LolaSampleMut {
             skeleton_event: self.skeleton_event,
             allocatee_ptr: self.allocatee_ptr,
             lifetime: PhantomData,
         }
     }
 
-    unsafe fn assume_init(self) -> SampleMut<'a, T, B> {
-        SampleMut {
+    unsafe fn assume_init(self) -> Self::SampleMut {
+        LolaSampleMut {
             skeleton_event: self.skeleton_event,
             allocatee_ptr: self.allocatee_ptr,
             lifetime: PhantomData,
@@ -270,7 +289,7 @@ where
     }
 }
 
-impl<'a, T, B: FFIBridge> AsMut<core::mem::MaybeUninit<T>> for SampleMaybeUninit<'a, T, B>
+impl<'a, T, B: FFIBridge> AsMut<core::mem::MaybeUninit<T>> for LolaSampleMaybeUninit<'a, T, B>
 where
     T: CommData + Debug,
 {
@@ -394,19 +413,19 @@ impl std::fmt::Debug for NativeSkeletonEventBase {
 }
 
 #[derive(Debug)]
-pub struct Publisher<T, B: FFIBridge> {
+pub struct LolaPublisher<T, B: FFIBridge> {
     skeleton_event: NativeSkeletonEventBase,
     type_ops: TypeOperationsManager,
     _data: PhantomData<T>,
     skeleton_instance: SkeletonInstanceManager<B>,
 }
 
-impl<T, B: FFIBridge> com_api_concept::Publisher<T, LolaRuntimeImpl<B>> for Publisher<T, B>
+impl<T, B: FFIBridge> Publisher<T, LolaRuntimeImpl<B>> for LolaPublisher<T, B>
 where
     T: CommData + Debug,
 {
     type SampleMaybeUninit<'a>
-        = SampleMaybeUninit<'a, T, B>
+        = LolaSampleMaybeUninit<'a, T, B>
     where
         Self: 'a;
 
@@ -432,7 +451,7 @@ where
             sample.assume_init()
         };
 
-        Ok(SampleMaybeUninit {
+        Ok(LolaSampleMaybeUninit {
             skeleton_event: self.skeleton_event.clone(),
             allocatee_ptr: AllocateePtrWrapper {
                 inner: ManuallyDrop::new(allocatee_ptr),
@@ -444,6 +463,7 @@ where
     }
 
     fn new(identifier: &str, instance_info: LolaProviderInfo<B>) -> Result<Self> {
+        log::info!("Publisher created for event: {}", identifier);
         let skeleton_event = NativeSkeletonEventBase::new::<B>(&instance_info, identifier)?;
         let type_ops = unsafe {
             instance_info
@@ -511,13 +531,9 @@ impl<I: Interface, B: FFIBridge> Builder<I::Producer<LolaRuntimeImpl<B>>>
 mod test {
     use super::*;
     use bridge_ffi_mock::{MockFFIBridge, MockPointerAllocator, SharedMockBridge};
-    use com_api_concept::InstanceSpecifier;
+    use score_com_concept::{InstanceSpecifier};
     use mockall::predicate::*;
     use mockall::Sequence;
-    // Bring trait methods into scope without shadowing local struct names.
-    use com_api_concept::Publisher as _;
-    use com_api_concept::SampleMaybeUninit as _;
-    use com_api_concept::SampleMut as _;
 
     #[derive(Debug, Default)]
     #[repr(C)]
@@ -525,9 +541,9 @@ mod test {
         value: i32,
     }
 
-    unsafe impl com_api_concept::Reloc for TestData {}
+    unsafe impl score_com_concept::Reloc for TestData {}
 
-    impl com_api_concept::CommData for TestData {
+    impl score_com_concept::CommData for TestData {
         const ID: &'static str = "TestData";
     }
 
@@ -674,8 +690,8 @@ mod test {
             bridge: bridge.clone(),
         };
 
-        let publisher: Publisher<TestData, SharedMockBridge> =
-            Publisher::<TestData, SharedMockBridge>::new("TestEvent", instance_info)
+        let publisher: LolaPublisher<TestData, SharedMockBridge> =
+            LolaPublisher::<TestData, SharedMockBridge>::new("TestEvent", instance_info)
                 .expect("Failed to create publisher");
         let sample = publisher.allocate().expect("Failed to allocate sample");
         let test_data = TestData { value: 42 };

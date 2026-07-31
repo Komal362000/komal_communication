@@ -1,5 +1,7 @@
 load("//bazel/tools:json_schema_validator.bzl", "validate_json_schema_test")
 
+visibility(["//..."])
+
 # Rule to generate JSON file and schema
 def _json_generator_impl(ctx):
     json_file = ctx.actions.declare_file(ctx.attr.name)

@@ -85,10 +85,8 @@ int ExecuteWithReconnect()
 {
     // App1 will receive one message, will disconnect and after the reconnect receive one more message and respond with
     // a notification.
-    constexpr int kMessagesBeforeDisconnect = 1;
-    constexpr int kMessagesAfterReconnect = 1;
     constexpr int kExpectedSendMessages = 1;
-    constexpr int kTotalExpectedMessages = kMessagesBeforeDisconnect + kMessagesAfterReconnect;
+    constexpr int kTotalExpectedMessages = 2;
 
     auto config = CreateConfiguration();
     BidirectionalTransport transport{std::move(config)};
@@ -101,7 +99,6 @@ int ExecuteWithReconnect()
 
     std::atomic<int> received_message_count{0};
     std::atomic<int> sent_message_count{0};
-    std::atomic<bool> disconnect_detected{false};
 
     transport.SetMessageHandler([&](std::unique_ptr<score::mw::com::gateway::TransportMessage> message) {
         const int count = ++received_message_count;
@@ -118,54 +115,11 @@ int ExecuteWithReconnect()
         }
     });
 
-    // Wait for the first message before disconnect
+    // Wait for all expected messages to be sent. Between receiving message 1 and message 2 there will be a
+    // disconnect application's transport layer should reconnect automatically.
     constexpr int kTimeoutMs = 15000;
     constexpr int kSleepIntervalMs = 50;
     int elapsed = 0;
-    while (received_message_count < kMessagesBeforeDisconnect && elapsed < kTimeoutMs)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(kSleepIntervalMs));
-        elapsed += kSleepIntervalMs;
-    }
-    if (received_message_count < kMessagesBeforeDisconnect)
-    {
-        std::cerr << "App1: Timed out waiting for messages before disconnect. Received "
-                  << received_message_count.load() << std::endl;
-        return 1;
-    }
-    std::cout << "App1: Received pre-disconnect messages, waiting for disconnect and reconnect..." << std::endl;
-
-    // Wait for disconnect to be detected (App2 has been shut down)
-    elapsed = 0;
-    while (transport.IsConnected() && elapsed < kTimeoutMs)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(kSleepIntervalMs));
-        elapsed += kSleepIntervalMs;
-    }
-    if (transport.IsConnected())
-    {
-        std::cout << "App1: Warning - No disconnected detected, but might have reconnected to quickly." << std::endl;
-    }
-    else
-    {
-        std::cout << "App1: Disconnect detected, waiting for reconnect" << std::endl;
-    }
-
-    // Wait for reconnect
-    elapsed = 0;
-    while (!transport.IsConnected() && elapsed < kTimeoutMs)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(kSleepIntervalMs));
-        elapsed += kSleepIntervalMs;
-    }
-    if (!transport.IsConnected())
-    {
-        std::cerr << "App1: Timed out waiting for reconnect." << std::endl;
-        return 1;
-    }
-
-    // Wait for the remaining message after reconnect
-    elapsed = 0;
     while (received_message_count < kTotalExpectedMessages && elapsed < kTimeoutMs)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(kSleepIntervalMs));

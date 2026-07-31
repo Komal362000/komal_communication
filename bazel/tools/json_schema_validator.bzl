@@ -2,6 +2,8 @@
 Creates "validate_json_schema_test" test rule which validates the input "json" file against its "schema"
 """
 
+visibility(["//..."])
+
 def _impl(ctx):
     script = """
     readonly expected_failure={expected_failure}

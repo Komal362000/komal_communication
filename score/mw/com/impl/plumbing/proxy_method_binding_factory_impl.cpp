@@ -21,6 +21,24 @@ namespace score::mw::com::impl
 namespace detail
 {
 
+bool IsMethodOrFieldEnabled(const LolaServiceInstanceDeployment& lola_service_instance_deployment,
+                            const std::string& method_name_str,
+                            MethodType method_type)
+{
+    if ((method_type == MethodType::kGet) || (method_type == MethodType::kSet))
+    {
+        const auto field_it = lola_service_instance_deployment.fields_.find(method_name_str);
+        SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(field_it != lola_service_instance_deployment.fields_.end(),
+                                                    "Could not find field deployment information for field method");
+        return (method_type == MethodType::kGet) ? field_it->second.use_get_if_available_
+                                                 : field_it->second.use_set_if_available_;
+    }
+    const auto method_it = lola_service_instance_deployment.methods_.find(method_name_str);
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(method_it != lola_service_instance_deployment.methods_.end(),
+                                                "Could not find method deployment information for method");
+    return method_it->second.enabled_;
+}
+
 LolaMethodInstanceDeployment::QueueSize GetQueueSize(HandleType parent_handle,
                                                      const std::string& method_name_str,
                                                      MethodType method_type)

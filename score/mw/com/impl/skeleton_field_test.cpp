@@ -13,6 +13,7 @@
 #include "score/mw/com/impl/skeleton_field.h"
 
 #include "score/mw/com/impl/bindings/mock_binding/skeleton_method.h"
+#include "score/mw/com/impl/com_error.h"
 #include "score/mw/com/impl/method_type.h"
 #include "score/mw/com/impl/methods/skeleton_method.h"
 #include "score/mw/com/impl/methods/skeleton_method_binding.h"
@@ -20,11 +21,14 @@
 #include "score/mw/com/impl/test/binding_factory_resources.h"
 #include "score/mw/com/impl/test/runtime_mock_guard.h"
 
+#include "score/result/result.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -89,7 +93,7 @@ class SkeletonFieldTestFixture : public ::testing::Test
     void SetUp() override
     {
         ON_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
-                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName, _))
             .WillByDefault(InvokeWithoutArgs([this]() {
                 return std::make_unique<mock_binding::SkeletonEventFacade<TestSampleType>>(
                     skeleton_field_binding_mock_);
@@ -170,6 +174,79 @@ TEST(SkeletonFieldTest, SkeletonFieldContainsPublicSampleType)
     static_assert(std::is_same<typename SkeletonField<TestSampleType, WithGetter, WithNotifier, WithSetter>::FieldType,
                                TestSampleType>::value,
                   "Incorrect FieldType.");
+}
+
+using SkeletonFieldCreationFixture = SkeletonFieldTestFixture;
+TEST_F(SkeletonFieldCreationFixture, CreatingFieldWithNotifierCallsFactoryWithNotifier)
+{
+    // Expect that the factory is called with WithNotifier
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithNotifier>()));
+
+    // When creating a SkeletonField with WithNotifier
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithNotifier> my_dummy_field{skeleton, kFieldName};
+}
+
+TEST_F(SkeletonFieldCreationFixture, CreatingFieldWithGetterCallsFactoryWithGetter)
+{
+    // Expect that the factory is called with WithGetter
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithGetter>()));
+
+    // When creating a SkeletonField with WithGetter
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithGetter> my_dummy_field{skeleton, kFieldName};
+}
+
+TEST_F(SkeletonFieldCreationFixture, CreatingFieldWithNotifierAndSetterCallsFactoryWithNotifierAndSetter)
+{
+    // Expect that the factory is called with WithNotifier and WithSetter
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
+                CreateEventBinding(
+                    kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithNotifier, WithSetter>()));
+
+    // When creating a SkeletonField with WithNotifier and WithSetter
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithNotifier, WithSetter> my_dummy_field{skeleton, kFieldName};
+}
+
+TEST_F(SkeletonFieldCreationFixture, CreatingFieldWithGetterAndSetterCallsFactoryWithGetterAndSetter)
+{
+    // Expect that the factory is called with WithGetter and WithSetter
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
+                CreateEventBinding(
+                    kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithGetter, WithSetter>()));
+
+    // When creating a SkeletonField with WithGetter and WithSetter
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithGetter, WithSetter> my_dummy_field{skeleton, kFieldName};
+}
+
+TEST_F(SkeletonFieldCreationFixture, CreatingFieldWithNotifierAndGetterCallsFactoryWithNotifierAndGetter)
+{
+    // Expect that the factory is called with WithNotifier and WithGetter
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard_.factory_mock_,
+                CreateEventBinding(
+                    kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithNotifier, WithGetter>()));
+
+    // When creating a SkeletonField with WithNotifier and WithGetter
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithNotifier, WithGetter> my_dummy_field{skeleton, kFieldName};
+}
+
+TEST_F(SkeletonFieldCreationFixture,
+       CreatingFieldWithNotifierAndGetterAndSetterCallsFactoryWithNotifierAndGetterAndSetter)
+{
+    // Expect that the factory is called with WithNotifier, WithGetter and WithSetter
+    EXPECT_CALL(
+        skeleton_field_binding_factory_mock_guard_.factory_mock_,
+        CreateEventBinding(
+            kInstanceIdWithLolaBinding, _, kFieldName, FieldTagsStore::Create<WithNotifier, WithGetter, WithSetter>()));
+
+    // When creating a SkeletonField with WithNotifier, WithGetter and WithSetter
+    SkeletonBase skeleton{std::make_unique<mock_binding::Skeleton>(), kInstanceIdWithLolaBinding};
+    SkeletonField<TestSampleType, WithNotifier, WithGetter, WithSetter> my_dummy_field{skeleton, kFieldName};
 }
 
 // When Ticket-104261 is implemented, the Update call does not have to be deferred until OfferService is called. This
@@ -691,7 +768,7 @@ TEST(SkeletonFieldInitialValueTest, MoveAssigningFieldBeforePrepareOfferWillKeep
     auto skeleton_field_binding_mock_ptr = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
     auto& skeleton_field_binding_mock = *skeleton_field_binding_mock_ptr;
     EXPECT_CALL(skeleton_field_binding_factory_mock_guard.factory_mock_,
-                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName, _))
         .WillOnce(Return(ByMove(std::move(skeleton_field_binding_mock_ptr))));
 
     EXPECT_CALL(skeleton_field_binding_mock, GetBindingType()).WillOnce(Return(BindingType::kLoLa));
@@ -722,7 +799,8 @@ TEST(SkeletonFieldInitialValueTest, MoveAssigningFieldBeforePrepareOfferWillKeep
     // and Expecting that a second SkeletonField binding is created
     auto skeleton_field_binding_mock_ptr_2 = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
     auto& skeleton_field_binding_mock_2 = *skeleton_field_binding_mock_ptr_2;
-    EXPECT_CALL(skeleton_field_binding_factory_mock_guard.factory_mock_, CreateEventBinding(identifier2, _, kFieldName))
+    EXPECT_CALL(skeleton_field_binding_factory_mock_guard.factory_mock_,
+                CreateEventBinding(identifier2, _, kFieldName, _))
         .WillOnce(Return(ByMove(std::move(skeleton_field_binding_mock_ptr_2))));
 
     EXPECT_CALL(skeleton_field_binding_mock_2, GetBindingType()).WillOnce(Return(BindingType::kLoLa));
@@ -837,7 +915,7 @@ TEST_F(SkeletonFieldDeathTest, DestroyingSkeletonFieldWhileHoldingSampleAllocate
     auto skeleton_field_binding_mock_ptr = std::make_unique<mock_binding::SkeletonEvent<TestSampleType>>();
     auto& skeleton_field_binding_mock = *skeleton_field_binding_mock_ptr;
     EXPECT_CALL(skeleton_field_binding_factory_mock_guard.factory_mock_,
-                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName))
+                CreateEventBinding(kInstanceIdWithLolaBinding, _, kFieldName, _))
         .WillOnce(Return(ByMove(std::move(skeleton_field_binding_mock_ptr))));
 
     // and that PrepareOffer() is called once on the field binding
@@ -935,7 +1013,7 @@ class SkeletonFieldSetHandlerTest : public SkeletonFieldTestFixture
     /// \brief Returns a span pointing to storage containing the provided field value
     std::pair<score::cpp::span<std::byte>, score::cpp::span<std::byte>> CreateFieldSetterInArgAndReturnSpans(
         const TestSampleType in_arg_value,
-        const TestSampleType return_value)
+        const score::Result<TestSampleType> return_value)
     {
         SCORE_LANGUAGE_FUTURECPP_ASSERT(!in_arg_storage_.has_value());
         SCORE_LANGUAGE_FUTURECPP_ASSERT(!return_storage_.has_value());
@@ -945,7 +1023,7 @@ class SkeletonFieldSetHandlerTest : public SkeletonFieldTestFixture
         score::cpp::span<std::byte> in_span{reinterpret_cast<std::byte*>(&(in_arg_storage_.value())),
                                             sizeof(TestSampleType)};
         score::cpp::span<std::byte> out_span{reinterpret_cast<std::byte*>(&(return_storage_.value())),
-                                             sizeof(TestSampleType)};
+                                             sizeof(score::Result<TestSampleType>)};
 
         return {in_span, out_span};
     }
@@ -954,7 +1032,7 @@ class SkeletonFieldSetHandlerTest : public SkeletonFieldTestFixture
     std::optional<SkeletonMethodBinding::TypeErasedHandler> captured_set_handler_{};
 
     std::optional<TestSampleType> in_arg_storage_{};
-    std::optional<TestSampleType> return_storage_{};
+    std::optional<score::Result<TestSampleType>> return_storage_{};
 };
 
 TEST_F(SkeletonFieldSetHandlerTest, RegisterSetHandlerForwardsToMethodBinding)
@@ -1075,7 +1153,8 @@ TEST_F(SkeletonFieldSetHandlerTest, CallingMethodHandlerInvokesUserCallback)
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 }
 
@@ -1107,7 +1186,8 @@ TEST_F(SkeletonFieldSetHandlerTest, CallingMethodHandlerInvokesLatestRegisteredU
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 }
 
@@ -1126,7 +1206,8 @@ TEST_F(SkeletonFieldSetHandlerTest, CallingMethodHandlerCallsSend)
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 }
 
@@ -1146,10 +1227,14 @@ TEST_F(SkeletonFieldSetHandlerTest, MethodHandlerDoesNotTerminateWhenSendFails)
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 
-    // Then we don't crash
+    // Then the out span contains an error indicating that the binding failed
+    const auto& return_value = *reinterpret_cast<score::Result<TestSampleType>*>(out_span.data());
+    ASSERT_FALSE(return_value.has_value());
+    EXPECT_EQ(static_cast<ComErrc>(*return_value.error()), ComErrc::kBindingFailure);
 }
 
 TEST_F(SkeletonFieldSetHandlerTest, CallingMethodHandlerCallsSendWithValueModifiedByUserCallback)
@@ -1176,7 +1261,8 @@ TEST_F(SkeletonFieldSetHandlerTest, CallingMethodHandlerCallsSendWithValueModifi
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 }
 
@@ -1204,7 +1290,8 @@ TEST_F(SkeletonFieldSetHandlerTest, PassingReferenceToHandlerUpdatesStateInPlace
     WhichIsOffered();
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 
     // Then the state of the functor is updated in place when the handler is called by the binding
@@ -1256,7 +1343,8 @@ TEST_F(SkeletonFieldMoveConstructionFixture,
     MySetterSkeleton unit2{std::move(*unit_)};
 
     // When calling the set handler that was captured by the method binding
-    auto [in_span, out_span] = CreateFieldSetterInArgAndReturnSpans(kDummySetValue, TestSampleType{});
+    auto [in_span, out_span] =
+        CreateFieldSetterInArgAndReturnSpans(kDummySetValue, score::Result<TestSampleType>{kDummySetValue});
     captured_set_handler_.value()(in_span, out_span);
 }
 
