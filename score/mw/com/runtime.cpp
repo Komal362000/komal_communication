@@ -86,4 +86,14 @@ void InitializeRuntime(const RuntimeConfiguration& runtime_configuration)
     impl::Runtime::Initialize(runtime_configuration);
 }
 
+Result<void> InitializeRuntimeAddonConfiguration(const RuntimeConfiguration& runtime_configuration)
+{
+    return impl::Runtime::InitializeRuntimeAddonConfiguration(runtime_configuration);
+}
+
+Result<void> InitializeRuntimeAddonConfiguration(score::json::Any json)
+{
+    return impl::Runtime::InitializeRuntimeAddonConfiguration(std::move(json));
+}
+
 }  // namespace score::mw::com::runtime

@@ -118,6 +118,27 @@ void InitializeRuntime(const cpp::span<safecpp::zstring_view> command_line_argum
  */
 void InitializeRuntime(const RuntimeConfiguration& runtime_configuration);
 
+/**
+ * \api
+ * \brief Extends mw::com subsystem with the given add-on configuration.
+ * \details This call is optional and shall allow loading additional mw::com configuration files in order to extend
+ * already loaded configurations.
+ * \attention This function will call std::terminate() in case that the configuration is incompatible to the previously
+ * loaded one or if no complete mw::com configuration has been loaded previously.
+ **/
+Result<void> InitializeRuntimeAddonConfiguration(const RuntimeConfiguration& runtime_configuration);
+
+/**
+ * \api
+ * \brief Extends mw::com subsystem with the given add-on configuration provided as a JSON blob.
+ * \details This call is optional and shall allow loading additional mw::com configuration as an in-memory JSON
+ *          object in order to extend already loaded configurations.
+ * \attention This function will call std::terminate() in case that the configuration is incompatible to the previously
+ * loaded one or if no complete mw::com configuration has been loaded previously.
+ * \param json The JSON object containing the add-on configuration.
+ **/
+Result<void> InitializeRuntimeAddonConfiguration(score::json::Any json);
+
 }  // namespace score::mw::com::runtime
 
 #endif  // SCORE_MW_COM_RUNTIME_H
