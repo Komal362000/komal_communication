@@ -114,8 +114,6 @@ cc_library(
         "@score_baselibs//score/os:stat",
         "@score_baselibs//score/os:unistd",
         "@score_baselibs//score/os/utils/acl",
-        # TODO Hacky
-        "@score_baselibs//score/os/utils/interprocess:interprocess_notification",
     ],
 )
 
@@ -250,8 +248,8 @@ cc_library(
     ],
     deps = [
         ":memory_region_bounds",
+        "@score_baselibs//score/concurrency:atomic_indirector",
         "@score_baselibs//score/language/futurecpp",
-        "@score_baselibs//score/memory/shared:atomic_indirector",
     ],
 )
 
@@ -473,6 +471,7 @@ cc_library(
 
 cc_library(
     name = "user_permission",
+    srcs = ["user_permission.cpp"],
     hdrs = ["user_permission.h"],
     features = COMPILER_WARNING_FEATURES,
     tags = ["FFI"],
@@ -640,7 +639,7 @@ cc_unit_test(
     deps = [
         ":memory_region_map",
         ":shared_memory_test_resources",
-        "@score_baselibs//score/memory/shared:atomic_indirector_mock_binding",
+        "@score_baselibs//score/concurrency:atomic_indirector_mock_binding",
         "@score_baselibs//score/mw/log:backend_stub_testutil",
     ],
 )

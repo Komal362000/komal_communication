@@ -17,6 +17,7 @@ load("//quality/unit_testing:unit_testing.bzl", "cc_unit_test")
 
 cc_library(
     name = "api",
+    srcs = ["api_under_test_smoke.cpp"],
     hdrs = glob(["api_under_test/**/*.h"]),
     features = COMPILER_WARNING_FEATURES,
     strip_include_prefix = "api_under_test",

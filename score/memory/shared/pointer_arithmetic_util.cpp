@@ -153,7 +153,7 @@ std::ptrdiff_t SubtractPointersBytes(const void* const first, const void* const 
     // Since we need to cast positive_result_as_integer to a std::ptrdiff_t, we have to handle the special case in which
     // the actual result is equal to ptr_diff_min. In such a case, the absolute value of the result will be ptr_diff_max
     // + 1U which cannot fit inside a std::ptrdiff_t. So we directly return ptr_diff_min in such a case.
-    if (absolute_value_result_as_integer == static_cast<std::uintptr_t>(ptr_diff_max) + 1U)
+    if (absolute_value_result_as_integer == (static_cast<std::uintptr_t>(ptr_diff_max) + 1U))
     {
         return std::numeric_limits<std::ptrdiff_t>::min();
     }

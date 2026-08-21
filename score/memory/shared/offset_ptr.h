@@ -377,7 +377,7 @@ class OffsetPtr
 
     template <typename T>
     // coverity[autosar_cpp14_a11_3_1_violation] See rationale for autosar_cpp14_a11_3_1_violation above
-    friend void swap(OffsetPtr<T>& left, OffsetPtr<T>& right);
+    friend void swap(OffsetPtr<T>& left, OffsetPtr<T>& right) noexcept;
 };
 
 // maybe-unitialized is triggered here by some compilers, because they thing that `this` in the initalizer-list
@@ -522,11 +522,15 @@ auto OffsetPtr<PointedType>::CopyFrom(const OffsetPtr<OtherPointedType>& source_
             !source_offset_ptr_bounds.has_value() && !target_offset_ptr_bounds.has_value();
         if (copying_from_shm_to_stack)
         {
-            memory_bounds = source_offset_ptr_bounds.value();
+            memory_bounds = *source_offset_ptr_bounds;
         }
         else if (copying_from_stack_to_stack)
         {
             memory_bounds = source_offset_ptr.memory_bounds_;
+        }
+        else
+        {
+            // We are either copying stack-to-stack or shm-to-shm. In both cases, no action is required.
         }
     }
 
@@ -677,6 +681,10 @@ auto OffsetPtr<PointedType>::operator+=(difference_type offset) -> OffsetPtr&
     else if (offset < 0)
     {
         DecrementOffset(static_cast<std::size_t>(AbsoluteValue(offset)));
+    }
+    else
+    {
+        // No offset change is required when offset is zero.
     }
     return *this;
 }
@@ -1083,7 +1091,7 @@ inline auto operator-(T1* const ptr1, const OffsetPtr<T2>& offset_ptr2) -> typen
 
 template <typename T>
 // coverity[autosar_cpp14_m3_2_3_violation : FALSE] See rationale for autosar_cpp14_m3_2_3_violation above
-void swap(OffsetPtr<T>& left, OffsetPtr<T>& right)
+void swap(OffsetPtr<T>& left, OffsetPtr<T>& right) noexcept
 {
     auto* const right_ptr = OffsetPtr<T>::GetPointerWithoutBoundsCheck(&right, right.offset_);
     right = left;

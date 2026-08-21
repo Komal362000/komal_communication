@@ -59,6 +59,9 @@ class SharedMemoryFactoryImpl final : public ISharedMemoryFactory
 
     void SetTypedMemoryProvider(std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept override;
 
+    void SetInterVMMemoryProvider(
+        std::shared_ptr<score::memory::shared::TypedMemory> intervm_memory_ptr) noexcept override;
+
     std::size_t GetControlBlockSize() noexcept override
     {
         return sizeof(score::memory::shared::SharedMemoryResource::ControlBlock);
@@ -73,6 +76,7 @@ class SharedMemoryFactoryImpl final : public ISharedMemoryFactory
     std::mutex mutex_{};
     std::unordered_map<std::string, std::weak_ptr<score::memory::shared::SharedMemoryResource>> resources_{};
     std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr_{memory::shared::TypedMemory::Default()};
+    std::shared_ptr<score::memory::shared::TypedMemory> intervm_memory_ptr_{nullptr};
 };
 
 }  // namespace score::memory::shared

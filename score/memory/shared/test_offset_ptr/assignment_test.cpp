@@ -12,6 +12,7 @@
  ********************************************************************************/
 #include "score/memory/shared/offset_ptr.h"
 #include "score/memory/shared/test_offset_ptr/offset_ptr_test_resources.h"
+#include "score/quality/compiler_warnings/warnings.h"
 
 #include <gtest/gtest.h>
 #include <utility>
@@ -52,6 +53,8 @@ template <typename T>
 using OffsetPtrAssignmentVoidOnlyFixture = OffsetPtrNoBoundsCheckingMemoryResourceFixture<T>;
 TYPED_TEST_SUITE(OffsetPtrAssignmentVoidOnlyFixture, AllMemoryResourceAndVoidTypeCombinations, );
 
+DISABLE_WARNING_PUSH
+DISABLE_WARNING_SELF_ASSIGN_OVERLOADED  // testing correctness of implementation
 TYPED_TEST(OffsetPtrAssignmentFixture, OffsetPtrAssigmentOperatorHandlesSelfAssignment)
 {
     using PointedType = typename TypeParam::second_type::Type;
@@ -64,6 +67,7 @@ TYPED_TEST(OffsetPtrAssignmentFixture, OffsetPtrAssigmentOperatorHandlesSelfAssi
 
     EXPECT_EQ(OffsetPtrCreator<PointedType>::GetRawPointer(offset_ptr_0), raw_ptr);
 }
+DISABLE_WARNING_POP  // "-Wself-assign-overloaded"
 
 TYPED_TEST(OffsetPtrAssignmentFixture, OffsetPtrAssigmentOperatorHandlesOffsetPtr)
 {

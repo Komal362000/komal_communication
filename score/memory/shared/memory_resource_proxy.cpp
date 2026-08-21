@@ -76,7 +76,7 @@ auto MemoryResourceProxy::deallocate(void* const memory, const std::size_t byte)
 // before calling value(), an exception will never be called and therefore there will never be an implicit
 // std::terminate call.
 // coverity[autosar_cpp14_a15_5_3_violation : FALSE]
-void MemoryResourceProxy::PerformBoundsCheck(const std::uint64_t memory_identifier) const noexcept
+void MemoryResourceProxy::PerformBoundsCheck(const std::uint64_t memory_identifier) const
 {
     auto memory_bounds =
         score::memory::shared::MemoryResourceRegistry::getInstance().GetBoundsFromIdentifier(memory_identifier);

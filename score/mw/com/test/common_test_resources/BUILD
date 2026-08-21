@@ -234,6 +234,7 @@ cc_library(
     ],
     deps = [
         ":command_line_parser",
+        ":general_resources",
         ":stop_token_sig_term_handler",
         "//score/mw/com",
     ],
@@ -405,11 +406,14 @@ cc_library(
     srcs = ["general_resources.cpp"],
     hdrs = ["general_resources.h"],
     features = COMPILER_WARNING_FEATURES,
+    visibility = ["//score/mw/com/test:__subpackages__"],
     deps = [
         ":check_point_control",
         ":child_process_guard",
         ":shared_memory_object_guard",
+        "//score/mw/com",
         "@score_baselibs//score/language/futurecpp",
+        "@score_baselibs//score/string_manipulation/arguments",
     ],
 )
 

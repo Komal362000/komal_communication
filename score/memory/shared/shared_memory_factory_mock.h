@@ -56,6 +56,11 @@ class SharedMemoryFactoryMock : public ISharedMemoryFactory
                 (std::shared_ptr<score::memory::shared::TypedMemory>),
                 (noexcept, override));
 
+    MOCK_METHOD(void,
+                SetInterVMMemoryProvider,
+                (std::shared_ptr<score::memory::shared::TypedMemory>),
+                (noexcept, override));
+
     MOCK_METHOD(std::size_t, GetControlBlockSize, (), (noexcept, override));
 
     MOCK_METHOD(void, Clear, (), (noexcept, override));

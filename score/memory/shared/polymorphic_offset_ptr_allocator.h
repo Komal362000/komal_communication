@@ -52,8 +52,7 @@ class PolymorphicOffsetPtrAllocator
     // Non-explicit constructor is good enough for maintaining required implicit conversion.
     // In addition semantically is a copy constructor.
     // NOLINTNEXTLINE(google-explicit-constructor): Tolerated, discard explicit.
-    PolymorphicOffsetPtrAllocator(const PolymorphicOffsetPtrAllocator<U>& rhs) noexcept
-        : proxy_(rhs.getMemoryResourceProxy())
+    PolymorphicOffsetPtrAllocator(const PolymorphicOffsetPtrAllocator<U>& rhs) : proxy_(rhs.getMemoryResourceProxy())
     {
     }
 
@@ -65,7 +64,7 @@ class PolymorphicOffsetPtrAllocator
     auto allocate(size_type size) -> pointer;
     void deallocate(pointer p, size_type size);
 
-    OffsetPtr<const MemoryResourceProxy> getMemoryResourceProxy() const noexcept;
+    OffsetPtr<const MemoryResourceProxy> getMemoryResourceProxy() const;
 
     template <typename U>
     friend bool operator==(const PolymorphicOffsetPtrAllocator<U>& lhs,
@@ -141,7 +140,7 @@ template <typename T>
 // SCORE_LANGUAGE_FUTURECPP_EXPECT_CONTRACT_VIOLATED macro) and will NEVER throw an exception in production code.
 // Therefore, an implicit termination due to an exception being thrown will never occur here in production.
 // coverity[autosar_cpp14_a15_5_3_violation]
-OffsetPtr<const MemoryResourceProxy> PolymorphicOffsetPtrAllocator<T>::getMemoryResourceProxy() const noexcept
+OffsetPtr<const MemoryResourceProxy> PolymorphicOffsetPtrAllocator<T>::getMemoryResourceProxy() const
 {
     return proxy_;
 }

@@ -148,7 +148,7 @@ score::Result<std::vector<utils::ScopeExit<>>> SkeletonBase::OfferServiceFields(
     return {std::move(offer_guards)};
 }
 
-auto SkeletonBase::OfferService() noexcept -> Result<void>
+auto SkeletonBase::OfferService() -> Result<void>
 {
     if (skeleton_mock_ != nullptr)
     {
@@ -160,13 +160,6 @@ auto SkeletonBase::OfferService() noexcept -> Result<void>
 
     auto register_shm_object_callback =
         tracing::CreateRegisterShmObjectCallback(instance_id_, events_, fields_, *binding_);
-
-    if (!binding_->VerifyAllMethodHandlersRegistered())
-    {
-        constexpr std::string_view msg =
-            "Not all methods have been registered! Call Register(...) with an appropriate callback on each mehtod.";
-        return MakeUnexpected(ComErrc::kBindingFailure, msg);
-    }
 
     const auto result = binding_->PrepareOffer(event_bindings, field_bindings, std::move(register_shm_object_callback));
     if (!result.has_value())
@@ -189,6 +182,16 @@ auto SkeletonBase::OfferService() noexcept -> Result<void>
     if (!field_offer_guards_result.has_value())
     {
         return MakeUnexpected<void>(field_offer_guards_result.error());
+    }
+
+    // Since the method handlers for the field getters are registered in the SkeletonField::PrepareOffer() function, we
+    // need to verify that all method handlers have been registered after the calling PrepareOffer() on the
+    // SkeletonFields.
+    if (!binding_->VerifyAllMethodHandlersRegistered())
+    {
+        constexpr std::string_view msg =
+            "Not all methods have been registered! Call Register(...) with an appropriate callback on each mehtod.";
+        return MakeUnexpected(ComErrc::kBindingFailure, msg);
     }
 
     const auto service_discovery_offer_result = Runtime::getInstance().GetServiceDiscovery().OfferService(instance_id_);

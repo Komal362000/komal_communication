@@ -11,6 +11,7 @@
  * SPDX-License-Identifier: Apache-2.0
  ********************************************************************************/
 #include "score/memory/shared/shared_memory_factory_impl.h"
+#include "score/memory/shared/typedshm/typedshm_wrapper/typed_memory.h"
 #include "score/memory/shared/typedshm/utils/typed_memory_utils.h"
 #include "score/mw/log/logging.h"
 #include "score/os/errno_logging.h"
@@ -140,18 +141,22 @@ auto SharedMemoryFactoryImpl::Open(const std::string& path,
 {
     if (IsInterVmShmPath(path))
     {
-        score::mw::log::LogError("shm")
-            << "Opening inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
-            << "') is not supported. No portable implementation exists yet. Rejecting path: " << path;
-        return nullptr;
+        if (intervm_memory_ptr_ == nullptr)
+        {
+            score::mw::log::LogError("shm")
+                << "Opening inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
+                << "') requires an InterVM memory provider set via SetInterVMMemoryProvider(). Rejecting path: "
+                << path;
+            return nullptr;
+        }
     }
 
     std::lock_guard<std::mutex> lock{mutex_};
     auto resource = GetResourceIfAlreadyOpened(path, resources_);
     if (resource == nullptr)
     {
-        const auto result =
-            SharedMemoryResource::Open(path, is_read_write, &CreateAccessControlList, typed_memory_ptr_);
+        const auto effective_ptr = IsInterVmShmPath(path) ? intervm_memory_ptr_ : typed_memory_ptr_;
+        const auto result = SharedMemoryResource::Open(path, is_read_write, &CreateAccessControlList, effective_ptr);
         if (!result.has_value())
         {
             score::mw::log::LogWarn("shm") << "Could not open Shared Memory " << path << ":" << result.error();
@@ -185,10 +190,14 @@ auto score::memory::shared::SharedMemoryFactoryImpl::Create(std::string path,
 {
     if (IsInterVmShmPath(path))
     {
-        score::mw::log::LogError("shm")
-            << "Creating inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
-            << "') is not supported. No portable implementation exists yet. Rejecting path: " << path;
-        return nullptr;
+        if (intervm_memory_ptr_ == nullptr)
+        {
+            score::mw::log::LogError("shm")
+                << "Creating inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
+                << "') requires an InterVM memory provider set via SetInterVMMemoryProvider(). Rejecting path: "
+                << path;
+            return nullptr;
+        }
     }
 
     std::lock_guard<std::mutex> lock{mutex_};
@@ -198,17 +207,25 @@ auto score::memory::shared::SharedMemoryFactoryImpl::Create(std::string path,
         return nullptr;
     }
 
-    if (prefer_typed_memory && (typed_memory_ptr_ == nullptr))
+    std::shared_ptr<TypedMemory> effective_provider = nullptr;
+    if (IsInterVmShmPath(path))
     {
-        score::mw::log::LogError("shm")
-            << "Shared memory has to be created in typed memory but no typed memory instance has "
-               "been provided using the public interface SetTypedMemoryProvider ";
-        return nullptr;
+        effective_provider = intervm_memory_ptr_;
+    }
+    else if (prefer_typed_memory)
+    {
+        if (typed_memory_ptr_ == nullptr)
+        {
+            score::mw::log::LogError("shm")
+                << "Shared memory has to be created in typed memory but no typed memory instance has "
+                   "been provided using the public interface SetTypedMemoryProvider ";
+            return nullptr;
+        }
+        effective_provider = typed_memory_ptr_;
     }
 
-    const auto typed_memory_ptr = prefer_typed_memory ? typed_memory_ptr_ : nullptr;
     const auto result = SharedMemoryResource::Create(
-        path, user_space_to_reserve, std::move(cb), permissions, &CreateAccessControlList, typed_memory_ptr);
+        path, user_space_to_reserve, std::move(cb), permissions, &CreateAccessControlList, effective_provider);
     if (!result.has_value())
     {
         score::mw::log::LogWarn("shm") << "Could not create Shared Memory " << path << ":" << result.error();
@@ -265,31 +282,43 @@ auto score::memory::shared::SharedMemoryFactoryImpl::CreateOrOpen(
 {
     if (IsInterVmShmPath(path))
     {
-        score::mw::log::LogError("shm")
-            << "Creating or opening inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
-            << "') is not supported. No portable implementation exists yet. Rejecting path: " << path;
-        return nullptr;
+        if (intervm_memory_ptr_ == nullptr)
+        {
+            score::mw::log::LogError("shm")
+                << "Creating or opening inter-VM shared memory (path prefix '" << kInterVmSharedShmPrefix
+                << "') requires an InterVM memory provider set via SetInterVMMemoryProvider(). Rejecting path: "
+                << path;
+            return nullptr;
+        }
     }
 
     std::lock_guard<std::mutex> lock{mutex_};
     auto resource = GetResourceIfAlreadyOpened(path, resources_);
     if (resource == nullptr)
     {
-        if ((prefer_typed_memory) && (typed_memory_ptr_ == nullptr))
+        std::shared_ptr<TypedMemory> effective_provider = nullptr;
+        if (IsInterVmShmPath(path))
         {
-            score::mw::log::LogError("shm")
-                << "Shared memory has to be created in typed memory but no typed memory instance "
-                   "has been provided using the public interface SetTypedMemoryProvider ";
-            return nullptr;
+            effective_provider = intervm_memory_ptr_;
+        }
+        else if (prefer_typed_memory)
+        {
+            if (typed_memory_ptr_ == nullptr)
+            {
+                score::mw::log::LogError("shm")
+                    << "Shared memory has to be created in typed memory but no typed memory instance "
+                       "has been provided using the public interface SetTypedMemoryProvider ";
+                return nullptr;
+            }
+            effective_provider = typed_memory_ptr_;
         }
 
-        const auto typed_memory_ptr = prefer_typed_memory ? typed_memory_ptr_ : nullptr;
         const auto result = SharedMemoryResource::CreateOrOpen(path,
                                                                user_space_to_reserve,
                                                                std::move(cb),
                                                                access_control.permissions_,
                                                                &CreateAccessControlList,
-                                                               typed_memory_ptr);
+                                                               effective_provider);
         if (!result.has_value())
         {
             score::mw::log::LogWarn("shm")
@@ -379,7 +408,12 @@ auto SharedMemoryFactoryImpl::RemoveStaleArtefacts(const std::string& path) noex
 
 auto SharedMemoryFactoryImpl::SetTypedMemoryProvider(std::shared_ptr<TypedMemory> typed_memory_ptr) noexcept -> void
 {
-    typed_memory_ptr_ = typed_memory_ptr;
+    typed_memory_ptr_ = std::move(typed_memory_ptr);
+}
+
+auto SharedMemoryFactoryImpl::SetInterVMMemoryProvider(std::shared_ptr<TypedMemory> intervm_memory_ptr) noexcept -> void
+{
+    intervm_memory_ptr_ = std::move(intervm_memory_ptr);
 }
 
 }  // namespace score::memory::shared

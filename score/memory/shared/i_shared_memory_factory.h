@@ -60,6 +60,8 @@ class ISharedMemoryFactory
 
     virtual void SetTypedMemoryProvider(std::shared_ptr<score::memory::shared::TypedMemory>) noexcept = 0;
 
+    virtual void SetInterVMMemoryProvider(std::shared_ptr<score::memory::shared::TypedMemory>) noexcept = 0;
+
     virtual std::size_t GetControlBlockSize() noexcept = 0;
 
     virtual void Clear() noexcept = 0;

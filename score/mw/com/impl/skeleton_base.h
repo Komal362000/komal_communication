@@ -73,7 +73,7 @@ class SkeletonBase
      * \return On failure, returns an error code according to the SW Component Requirements SCR-17434118 and
      * SCR-566325.
      */
-    [[nodiscard]] Result<void> OfferService() noexcept;
+    [[nodiscard]] Result<void> OfferService();
 
     /**
      * \api

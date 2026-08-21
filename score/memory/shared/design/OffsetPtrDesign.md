@@ -174,8 +174,8 @@ We rely on having sufficient tests to ensure that the implementation behaves as 
 ### Bounds checking iterators / element access
 
 LoLa uses [DynamicArrays](../../../containers/dynamic_array.h) for
-its [ServiceDataStorage](../../../../mw/com/impl/bindings/lola/service_data_storage.h)
-and [ServiceDataControl](../../../../mw/com/impl/bindings/lola/service_data_control.h).
+its [ServiceDataStorage](../../../mw/com/impl/bindings/lola/service_data_storage.h)
+and [ServiceDataControl](../../../mw/com/impl/bindings/lola/service_data_control.h).
 A `DynamicArray` is a fixed-size array data structure whose size can be, dynamically set at construction.
 Since these both reside in shared memory, the underlying pointer type used by `DynamicArray` must be an `OffsetPtr`.
 The `DynamicArray` is therefore susceptible to similar issues of memory corruption as an `OffsetPtr`.

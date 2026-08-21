@@ -94,7 +94,7 @@ bool DoesOffsetPtrNotInSharedMemoryPassBoundsChecks(const void* const offset_ptr
                                                     const std::ptrdiff_t offset,
                                                     const MemoryRegionBounds& offset_ptr_memory_bounds,
                                                     const std::size_t pointed_type_size,
-                                                    const std::size_t offset_ptr_size) noexcept
+                                                    const std::size_t offset_ptr_size)
 {
     // Check that the entire OffsetPtr lies outside a memory region
     const auto offset_ptr_address_as_integer = CastPointerToInteger(offset_ptr_address);

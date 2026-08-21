@@ -250,8 +250,12 @@ TEST_F(SkeletonBaseOfferFixture, OfferServiceFailsIfAllMethodsHaveNotBeenRegiste
     // Given a constructed Skeleton with a valid identifier with two events and a field registered with the skeleton
     CreateSkeleton(GetInstanceIdentifierWithValidBinding());
 
-    // When VerifyAllMethodHandlersRegistered returns false
+    // Expecting that VerifyAllMethodHandlersRegistered is called which returns false
     EXPECT_CALL(*binding_mock_, VerifyAllMethodHandlersRegistered()).WillOnce(Return(false));
+
+    // and the initial field value is set
+    std::ignore = skeleton_->dummy_field.Update(kInitialFieldValue);
+    std::ignore = skeleton_->dummy_field2.Update(kInitialFieldValue2);
 
     // When offering a Service
     const auto offer_result = skeleton_->OfferService();
@@ -790,6 +794,11 @@ class DummyField : public SkeletonFieldBase
     bool IsSetHandlerMissing() const noexcept override
     {
         return false;
+    }
+
+    Result<void> RegisterGetHandler() override
+    {
+        return {};
     }
 };
 const auto kServiceIdentifier = make_ServiceIdentifierType("foo", 13, 37);

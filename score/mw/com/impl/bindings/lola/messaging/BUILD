@@ -229,6 +229,7 @@ cc_library(
 
 cc_library(
     name = "messaging",
+    srcs = ["messaging.cpp"],
     hdrs = [
         "thread_abstraction.h",
     ],

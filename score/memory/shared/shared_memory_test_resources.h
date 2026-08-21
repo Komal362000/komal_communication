@@ -88,7 +88,7 @@ class SharedMemoryResourceTestAttorney
         SharedMemoryResource::InitializeCallback initialize_callback,
         const UserPermissions& permissions = {},
         score::os::IAccessControlList* acl_control_list = nullptr,
-        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr) noexcept;
+        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr);
 
     static score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> CreateAnonymous(
         std::uint64_t shared_memory_resource_id,
@@ -96,7 +96,7 @@ class SharedMemoryResourceTestAttorney
         SharedMemoryResource::InitializeCallback initialize_callback,
         const UserPermissions& permissions = {},
         score::os::IAccessControlList* acl_control_list = nullptr,
-        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr) noexcept;
+        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr);
 
     static score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> CreateOrOpen(
         std::string input_path,
@@ -104,7 +104,7 @@ class SharedMemoryResourceTestAttorney
         SharedMemoryResource::InitializeCallback initialize_callback,
         const UserPermissions& permissions = {},
         score::os::IAccessControlList* acl_control_list = nullptr,
-        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr) noexcept;
+        std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr = nullptr);
 
     static score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Open(
         std::string input_path,

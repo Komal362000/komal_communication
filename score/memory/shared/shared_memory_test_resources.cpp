@@ -116,7 +116,7 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
     SharedMemoryResource::InitializeCallback initialize_callback,
     const UserPermissions& permissions,
     score::os::IAccessControlList* acl_control_list,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     if (acl_control_list == nullptr)
     {
@@ -145,13 +145,12 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
 }
 
 score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error>
-SharedMemoryResourceTestAttorney::CreateAnonymous(
-    std::uint64_t shared_memory_resource_id,
-    const std::size_t user_space_to_reserve,
-    SharedMemoryResource::InitializeCallback initialize_callback,
-    const UserPermissions& permissions,
-    score::os::IAccessControlList* acl_control_list,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+SharedMemoryResourceTestAttorney::CreateAnonymous(std::uint64_t shared_memory_resource_id,
+                                                  const std::size_t user_space_to_reserve,
+                                                  SharedMemoryResource::InitializeCallback initialize_callback,
+                                                  const UserPermissions& permissions,
+                                                  score::os::IAccessControlList* acl_control_list,
+                                                  std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     if (acl_control_list == nullptr)
     {
@@ -180,13 +179,12 @@ SharedMemoryResourceTestAttorney::CreateAnonymous(
 }
 
 score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error>
-SharedMemoryResourceTestAttorney::CreateOrOpen(
-    std::string input_path,
-    const std::size_t user_space_to_reserve,
-    SharedMemoryResource::InitializeCallback initialize_callback,
-    const UserPermissions& permissions,
-    score::os::IAccessControlList* acl_control_list,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+SharedMemoryResourceTestAttorney::CreateOrOpen(std::string input_path,
+                                               const std::size_t user_space_to_reserve,
+                                               SharedMemoryResource::InitializeCallback initialize_callback,
+                                               const UserPermissions& permissions,
+                                               score::os::IAccessControlList* acl_control_list,
+                                               std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     if (acl_control_list == nullptr)
     {

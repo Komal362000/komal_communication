@@ -77,7 +77,7 @@ class MemoryResourceProxy
     static bool EnableBoundsChecking(const bool enable) noexcept;
 
   private:
-    void PerformBoundsCheck(const std::uint64_t memory_identifier) const noexcept;
+    void PerformBoundsCheck(const std::uint64_t memory_identifier) const;
 
     const std::uint64_t memory_identifier_;
     /// \brief shall bounds-checking be enabled or not within the process.

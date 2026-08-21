@@ -83,7 +83,12 @@ auto SharedMemoryFactory::RemoveStaleArtefacts(const std::string& path) noexcept
 
 auto SharedMemoryFactory::SetTypedMemoryProvider(std::shared_ptr<TypedMemory> typed_memory_ptr) noexcept -> void
 {
-    instance().SetTypedMemoryProvider(typed_memory_ptr);
+    instance().SetTypedMemoryProvider(std::move(typed_memory_ptr));
+}
+
+auto SharedMemoryFactory::SetInterVMMemoryProvider(std::shared_ptr<TypedMemory> intervm_memory_ptr) noexcept -> void
+{
+    instance().SetInterVMMemoryProvider(std::move(intervm_memory_ptr));
 }
 
 auto SharedMemoryFactory::instance() noexcept -> ISharedMemoryFactory&

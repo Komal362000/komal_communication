@@ -356,7 +356,7 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
     InitializeCallback initialize_callback,
     const UserPermissions& permissions,
     AccessControlListFactory acl_factory,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     auto resource = CreateInstance(std::move(input_path), std::move(acl_factory), typed_memory_ptr);
     const auto result = resource->CreateImpl(user_space_to_reserve, std::move(initialize_callback), permissions);
@@ -377,7 +377,7 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
     InitializeCallback initialize_callback,
     const UserPermissions& permissions,
     AccessControlListFactory acl_factory,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     auto resource = CreateInstance(shared_memory_resource_id, std::move(acl_factory), typed_memory_ptr);
     const auto result = resource->CreateImpl(user_space_to_reserve, std::move(initialize_callback), permissions);
@@ -402,7 +402,7 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
     InitializeCallback initialize_callback,
     const UserPermissions& permissions,
     AccessControlListFactory acl_factory,
-    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr) noexcept
+    std::shared_ptr<score::memory::shared::TypedMemory> typed_memory_ptr)
 {
     auto resource = CreateInstance(std::move(input_path), std::move(acl_factory), typed_memory_ptr);
     const auto result = resource->CreateOrOpenImpl(user_space_to_reserve, std::move(initialize_callback), permissions);
@@ -437,7 +437,7 @@ score::cpp::expected<std::shared_ptr<SharedMemoryResource>, score::os::Error> Sh
 
 SharedMemoryResource::SharedMemoryResource(std::string input_path,
                                            AccessControlListFactory acl_factory,
-                                           std::shared_ptr<TypedMemory> typed_memory_ptr) noexcept
+                                           std::shared_ptr<TypedMemory> typed_memory_ptr)
     : SharedMemoryResource(std::variant<std::string, std::uint64_t>{std::move(input_path)},
                            std::move(acl_factory),
                            std::move(typed_memory_ptr))
@@ -446,7 +446,7 @@ SharedMemoryResource::SharedMemoryResource(std::string input_path,
 
 SharedMemoryResource::SharedMemoryResource(std::uint64_t shared_memory_resource_id,
                                            AccessControlListFactory acl_factory,
-                                           std::shared_ptr<TypedMemory> typed_memory_ptr) noexcept
+                                           std::shared_ptr<TypedMemory> typed_memory_ptr)
     : SharedMemoryResource(std::variant<std::string, std::uint64_t>{shared_memory_resource_id},
                            std::move(acl_factory),
                            std::move(typed_memory_ptr))
@@ -457,7 +457,7 @@ SharedMemoryResource::SharedMemoryResource(std::uint64_t shared_memory_resource_
 // coverity[autosar_cpp14_a15_5_3_violation]
 SharedMemoryResource::SharedMemoryResource(std::variant<std::string, std::uint64_t> identifier,
                                            AccessControlListFactory acl_factory,
-                                           std::shared_ptr<TypedMemory> typed_memory_ptr) noexcept
+                                           std::shared_ptr<TypedMemory> typed_memory_ptr)
     : ISharedMemoryResource{},
       std::enable_shared_from_this<SharedMemoryResource>{},
       file_descriptor_{-1},
@@ -497,7 +497,7 @@ SharedMemoryResource::SharedMemoryResource(std::variant<std::string, std::uint64
 // coverity[autosar_cpp14_a15_5_3_violation : FALSE]
 score::cpp::expected_blank<Error> SharedMemoryResource::CreateImpl(const std::size_t user_space_to_reserve,
                                                                    const InitializeCallback initialize_callback,
-                                                                   const UserPermissions& permissions) noexcept
+                                                                   const UserPermissions& permissions)
 {
     this->opening_mode_ = Fcntl::Open::kReadWrite;
     this->map_mode_ = ::score::os::Mman::Protection::kRead | ::score::os::Mman::Protection::kWrite;
@@ -551,7 +551,7 @@ score::cpp::expected_blank<Error> SharedMemoryResource::CreateImpl(const std::si
 
 score::cpp::expected_blank<Error> SharedMemoryResource::CreateOrOpenImpl(const std::size_t user_space_to_reserve,
                                                                          InitializeCallback initialize_callback,
-                                                                         const UserPermissions& permissions) noexcept
+                                                                         const UserPermissions& permissions)
 {
     const auto* const path = std::get_if<std::string>(&shared_memory_resource_identifier_);
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(path != nullptr, "shm-object file path is not set.");
@@ -598,7 +598,7 @@ score::cpp::expected_blank<Error> SharedMemoryResource::CreateOrOpenImpl(const s
     return {};
 }
 
-score::cpp::expected_blank<Error> SharedMemoryResource::OpenImpl(const bool is_read_write) noexcept
+score::cpp::expected_blank<Error> SharedMemoryResource::OpenImpl(const bool is_read_write)
 {
     if (is_read_write)
     {
@@ -613,7 +613,7 @@ score::cpp::expected_blank<Error> SharedMemoryResource::OpenImpl(const bool is_r
 
 // Warning is due to score::cpp::expected value() but the rationale is the same as for score::Result::value() above
 // coverity[autosar_cpp14_a15_5_3_violation]
-auto SharedMemoryResource::acquireLockAndOpenSharedMemory() noexcept -> score::cpp::expected_blank<Error>
+auto SharedMemoryResource::acquireLockAndOpenSharedMemory() -> score::cpp::expected_blank<Error>
 {
     const auto* const path = std::get_if<std::string>(&shared_memory_resource_identifier_);
     const auto is_named_shm = (path != nullptr);
@@ -987,7 +987,7 @@ auto SharedMemoryResource::initializeControlBlock() noexcept -> void
 
 // Warning is due to std::optional::value but the rationale is the same as for std::optional:value() above
 // coverity[autosar_cpp14_a15_5_3_violation]
-auto SharedMemoryResource::acquireLockFile() const noexcept -> std::optional<LockFile>
+auto SharedMemoryResource::acquireLockFile() const -> std::optional<LockFile>
 {
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(lock_file_path_.has_value(), "Lock file path is not set.");
 
@@ -999,7 +999,7 @@ auto SharedMemoryResource::acquireLockFile() const noexcept -> std::optional<Loc
         {
             const auto* const path = std::get_if<std::string>(&shared_memory_resource_identifier_);
             ::score::mw::log::LogFatal("shm")
-                << __func__ << __LINE__ << "Shared Memory Resource: " << (path != nullptr ? *path : "<unknown>")
+                << __func__ << __LINE__ << "Shared Memory Resource: " << ((path != nullptr) ? *path : "<unknown>")
                 << " Lock file still present after timeout. Cannot open shared memory. Terminating";
             std::terminate();
         }
@@ -1011,7 +1011,7 @@ auto SharedMemoryResource::acquireLockFile() const noexcept -> std::optional<Loc
 // Warning is due to std::optional::value but the rationale is the same as for std::optional:value() above
 // coverity[autosar_cpp14_a15_5_3_violation]
 score::cpp::expected_blank<score::os::Error> SharedMemoryResource::CreateLockFileForNamedSharedMemory(
-    std::optional<LockFile>& lock_file) noexcept
+    std::optional<LockFile>& lock_file)
 {
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(lock_file_path_.has_value(), "Lock file path is not set.");
     lock_file = LockFile::Create(this->lock_file_path_.value());
