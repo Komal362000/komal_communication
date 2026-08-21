@@ -1,0 +1,76 @@
+/********************************************************************************
+ * Copyright (c) 2026 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Apache License Version 2.0 which is available at
+ * https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ ********************************************************************************/
+package Communication
+
+import ScoreReq
+
+ScoreReq.CompReq E2EDetailedPerSampleCheckStatusExposedByPublicApi {
+    description = "For each received E2E-protected sample, the frontend_component's public event, field, and method-response access API shall return a per-sample check-status value distinguishing at least valid, valid-with-tolerated-loss, repeated, wrong sequence, error, and no-new-data."
+    safety = ScoreReq.Asil.B
+    note = "This is the default, full-detail view; a reduced view is provided in addition, not instead (see E2EReducedStatusViewAvailableAlongsideDetailedStatus)."
+    derived_from = [ Communication.E2EPerSampleDetailedCheckStatusExposure@1, Communication.E2EErrorDetectionAndClassification@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EReducedStatusViewAvailableAlongsideDetailedStatus {
+    description = "In addition to the detailed per-sample check-status value, the frontend_component's public API shall provide a reduced valid/error view of the same result for consumers that do not need the detailed distinction."
+    safety = ScoreReq.Asil.B
+    note = "The detailed view remains the source of truth; the reduced view is a convenience projection of it, not a separate computation."
+    derived_from = [ Communication.E2EPerSampleDetailedCheckStatusExposure@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EStateMachineStatusExposedDistinctFromCheckStatus {
+    description = "Where a state-machine profile variant is enabled for a communication element, the frontend_component's public API shall expose the aggregated state-machine status as a field distinct from the per-sample check-status value returned for the same sample."
+    safety = ScoreReq.Asil.B
+    note = "Per-sample check status and state-machine status answer different questions (this one sample vs. this channel over a window) and must remain independently readable."
+    derived_from = [ Communication.E2EPerSampleDetailedCheckStatusExposure@1, Communication.E2EInitializationStateDistinguishedFromFault@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EInitializationAndNoDataStatesRepresentedAsDistinctEnumerators {
+    description = "The frontend_component's public API shall represent the state machine's initialization and no-data states as enumerator values distinct from its valid and invalid enumerator values in the status type returned to the consuming application."
+    safety = ScoreReq.Asil.B
+    note = "A distinct enumerator, rather than a suppressed or remapped result, lets a consumer choose how to treat 'not enough history yet' instead of the API deciding for it."
+    derived_from = [ Communication.E2EInitializationStateDistinguishedFromFault@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EMaxDeltaCounterReadFromDeploymentConfiguration {
+    description = "For each E2E-protected communication element, the frontend_component's public API shall obtain the maximum tolerated counter delta from that element's deployment configuration instead of a value hard-coded in the frontend_component."
+    safety = ScoreReq.Asil.B
+    derived_from = [ Communication.E2EToleranceParametersConfigurablePerCommunicationElement@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EUsageErrorReturnedThroughDistinctErrorChannel {
+    description = "The frontend_component's public API shall return an E2E protect, forward, or check function usage error, such as a null required argument or an out-of-range input, through its function-call error-return channel, distinct from the per-sample check-status value returned on a successful call."
+    safety = ScoreReq.Asil.B
+    note = "A usage/configuration defect is a programming error to surface immediately; a non-valid check-status value is an expected runtime condition. Mixing the two into one result type would hide the former among the latter."
+    derived_from = [ Communication.E2EUsageErrorsDistinctFromCommunicationFaultStatus@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2ENonValidStatusReturnedWithoutAutomaticCorrectiveAction {
+    description = "Upon computing a non-valid check-status value for a sample, the frontend_component's public API shall return that value to the consuming application without discarding the sample, retrying delivery, or transitioning the component to a fail-safe state on its own."
+    safety = ScoreReq.Asil.B
+    derived_from = [ Communication.ApplicationDrivenResponseToDetectedE2EErrors@1 ]
+    version = 1
+}
+
+ScoreReq.CompReq E2EClientAttributableMethodErrorRequiresTopologyConstraint {
+    description = "For an E2E-protected service method, the frontend_component's public API shall attribute a detected repetition or insertion error to the requesting client only when the method's deployment configuration specifies a single server instance per method or a client-aware profile variant."
+    safety = ScoreReq.Asil.B
+    derived_from = [ Communication.ClientAttributableErrorDetectionForMethodsRequiresTopologyConstraint@1 ]
+    version = 1
+}
