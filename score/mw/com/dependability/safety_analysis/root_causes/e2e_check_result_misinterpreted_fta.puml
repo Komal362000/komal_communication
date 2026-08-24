@@ -1,0 +1,26 @@
+' *******************************************************************************
+' Copyright (c) {year} Contributors to the Eclipse Foundation
+'
+' See the NOTICE file(s) distributed with this work for additional
+' information regarding copyright ownership.
+'
+' This program and the accompanying materials are made available under the
+' terms of the Apache License Version 2.0 which is available at
+' https://www.apache.org/licenses/LICENSE-2.0
+'
+' SPDX-License-Identifier: Apache-2.0
+' *******************************************************************************
+
+@startuml
+
+!include fta_metamodel.puml
+
+$TopEvent("Application misinterprets E2E check result", "Communication.ApplicationMisinterpretsE2ECheckResult")
+
+$OrGate("Gate1", "Communication.ApplicationMisinterpretsE2ECheckResult")
+$BasicEvent("E2E method calls not necessarily periodic", "Communication.E2EMethodCallsNotNecessarilyPeriodic", "Gate1")
+$BasicEvent("Application must wait for valid state during initialization", "Communication.ApplicationMustWaitForValidStateDuringInitialization", "Gate1")
+$BasicEvent("Application must treat no-new-data as untrustworthy", "Communication.ApplicationMustTreatNoNewDataAsUntrustworthy", "Gate1")
+$BasicEvent("Data IDs globally unique for E2E-protected elements", "Communication.DataIdsGloballyUniqueForE2EProtectedElements", "Gate1")
+
+@enduml

@@ -14,82 +14,18 @@ package Communication
 
 import ScoreReq
 
-ScoreReq.FeatReq E2EErrorDetectionAndClassification {
-    description = "The communication framework shall detect and classify End-to-End (E2E) transmission errors - data corruption, sample loss, sample repetition, sample reordering, insertion, and masquerading - for E2E-protected events, fields, and service method responses received by a consumer."
-    safety = ScoreReq.Asil.B
-    note = "Masquerading and insertion are attributed via the Data ID check, corruption via the CRC check, and repetition/loss/reordering via the counter check; the classification shall retain this per-mechanism distinction rather than collapsing all faults into one generic error."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.InterProcessCommunication@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq E2EPerSampleDetailedCheckStatusExposure {
-    description = "For each received E2E-protected sample, the communication framework shall expose the full per-sample check status (at minimum: valid, valid-with-tolerated-loss, repeated, wrong sequence, error, and no-new-data) to the consuming application, in addition to any state-machine-aggregated status."
-    safety = ScoreReq.Asil.B
-    note = "The per-sample check status is the natural output granularity of the underlying protection mechanism; collapsing it to binary before delivery discards information a consuming application may need to distinguish tolerated loss from a hard fault."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.SystemSupportForDataDrivenArchitecture@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq E2EInitializationStateDistinguishedFromFault {
-    description = "The communication framework shall expose the E2E state machine's initialization and no-data states as distinct, unmodified check results, separate from a valid or faulty result."
-    safety = ScoreReq.Asil.B
-    note = "The state machine's initialization and no-data states exist precisely so a consumer can distinguish 'not enough history yet' from a genuine fault; ad hoc suppression of early results defeats that distinction."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.SystemSupportForDataDrivenArchitecture@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq E2EToleranceParametersConfigurablePerCommunicationElement {
-    description = "It shall be possible to configure the maximum tolerated counter delta and, where a state machine is used, its window and threshold parameters independently for each E2E-protected event, field, or method, so that how much loss or reordering is tolerated before an error or state transition is reported can be tuned per communication element."
-    safety = ScoreReq.Asil.B
-    note = "The maximum tolerated counter delta and the state-machine window/threshold values are deployment-configurable tuning parameters, distinct from the fixed structural profile parameters (data ID mode, counter/CRC/header offsets) that must not be modified (see [[E2EErrorDetectionIntegrityDependsOnFixedProfileParameters]])."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.SystemSupportForDataDrivenArchitecture@1 ]
-    version = 1
-}
-
 ScoreReq.FeatReq E2EUsageErrorsDistinctFromCommunicationFaultStatus {
     description = "The communication framework shall report an E2E API usage or configuration error (e.g. a null required argument or an out-of-range input) through a channel distinct from the per-sample communication-fault check status, so that it is surfaced as a programming or configuration defect rather than as a runtime check-status value such as an error or repeated-sample result."
     safety = ScoreReq.Asil.B
     note = "The function-level return codes for a protect/forward/check call are distinct from the per-sample check status; conflating the two would collapse a usage-error channel and a communication-fault channel into one."
-    derived_from = [ Communication.SystemErrorHandling@1, Communication.SystemSafeCommunication@1 ]
+    derived_from = [Communication.SystemErrorHandling@1, Communication.SystemSafeCommunication@1]
     version = 1
 }
 
-ScoreReq.FeatReq E2EErrorReportingBoundedToDeliveredData {
-    description = "The communication framework's E2E error detection shall cover only data that reaches the E2E check function, excluding transmission errors already detected and discarded by lower communication layers before delivery."
+ScoreReq.FeatReq E2EErrorClassificationPreservesMasqueradingAndInsertionDetection {
+    description = "The communication framework's E2E error status shall preserve detection of masquerading and insertion faults, performed via the Data ID and CRC checks, and not reduce the exposed error classification to counter-based faults (loss, repetition, reordering) alone."
     safety = ScoreReq.Asil.B
-    note = "E2E supervision has no visibility of messages that never arrive at the binding."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.SystemErrorHandling@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq PeriodicCheckInvocationForEventErrorDetection {
-    description = "For E2E-protected events and fields, the communication framework's error detection shall depend on the consuming application invoking the E2E check function at a defined, regular cadence that the framework itself does not enforce."
-    safety = ScoreReq.Asil.B
-    note = "Without periodic invocation, loss or delay of the entire communication cannot be reliably detected by the profile state machine."
-    derived_from = [ Communication.SystemSupportForDataDrivenArchitecture@1, Communication.SystemSafeCommunication@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq ClientAttributableErrorDetectionForMethodsRequiresTopologyConstraint {
-    description = "For E2E-protected service methods, the communication framework's error detection shall attribute a detected repetition or insertion error to the correct requesting client only when either a single server per method (N:1 topology) or a client/session-aware E2E profile variant is used."
-    safety = ScoreReq.Asil.B
-    note = "The plain per-data-element profile check has no a priori knowledge of the requesting client, so client-specific failure modes cannot be attributed otherwise."
-    derived_from = [ Communication.SystemSupportForRequestDrivenArchitecture@1, Communication.SystemSafeCommunication@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq E2EErrorDetectionIntegrityDependsOnFixedProfileParameters {
-    description = "The communication framework's E2E error detection shall rely on the profile parameters (data ID mode, counter offset, CRC offset, data ID nibble offset, header offset) remaining unmodified from their specified values on both producer and consumer side, without itself detecting a deviation from these values."
-    safety = ScoreReq.Asil.B
-    note = "These parameters must not be altered, since a mismatch silently defeats detection instead of producing an observable error."
-    derived_from = [ Communication.SystemSafeCommunication@1 ]
-    version = 1
-}
-
-ScoreReq.FeatReq ApplicationDrivenResponseToDetectedE2EErrors {
-    description = "Upon detecting an E2E error, the communication framework shall report the error to the consuming application as a status value without performing any automatic corrective or fail-safe action; further handling of the detected error is the responsibility of the consuming application."
-    safety = ScoreReq.Asil.B
-    note = "Consistent with the platform's general error handling policy of notifying the caller rather than resolving errors transparently or throwing exceptions."
-    derived_from = [ Communication.SystemSafeCommunication@1, Communication.SystemErrorHandling@1 ]
+    note = "Counter-based checks alone cannot detect a correctly-sequenced but wrongly-addressed or corrupted sample; Data ID and CRC checks cover a distinct fault class that must remain visible in the reported error, not just sequence-related faults."
+    derived_from = [Communication.SystemSafeCommunication@1]
     version = 1
 }

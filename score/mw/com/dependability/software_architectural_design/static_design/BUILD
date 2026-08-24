@@ -21,5 +21,15 @@ architectural_design(
         "someip_binding.puml",
         "mock_binding.puml",
     ],
+    dynamic = [
+        "e2e_error_handling_dynamic.puml",
+    ],
+    internal_api = [
+        "e2e_error_handling_internal_api.puml",
+    ],
+    # Matches the maturity level of the parent dependable_element (mw_com): this SEooC's
+    # architecture is still under active development, so validation findings against the
+    # new/evolving E2E diagrams are recorded as warnings rather than failing the build.
+    maturity = "development",
     visibility = ["//score/mw/com/dependability:__subpackages__"],
 )

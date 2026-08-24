@@ -1,0 +1,60 @@
+' *******************************************************************************
+' Copyright (c) 2026 Contributors to the Eclipse Foundation
+'
+' See the NOTICE file(s) distributed with this work for additional
+' information regarding copyright ownership.
+'
+' This program and the accompanying materials are made available under the
+' terms of the Apache License Version 2.0 which is available at
+' https://www.apache.org/licenses/LICENSE-2.0
+'
+' SPDX-License-Identifier: Apache-2.0
+' *******************************************************************************
+@startuml e2e_error_handling_state_machine
+
+title "E2E State Machine — sm_state wiring (E2E spec §4.3/§4.4, R5)"
+
+state E2E_SM_DEINIT as "Deinit" : state machine not yet started
+state E2E_SM_NODATA as "NoData" : waiting for the first reception
+state E2E_SM_INIT as "Init" : accumulating checkStatus over WindowSizeInit
+state E2E_SM_VALID as "Valid" : ok to use the data
+state E2E_SM_INVALID as "Invalid" : genuine communication fault
+
+[*] --> E2E_SM_DEINIT
+E2E_SM_DEINIT --> E2E_SM_NODATA : enabled / first E2E_SMCheck() call
+
+E2E_SM_NODATA --> E2E_SM_INIT : first sample received (R5: NOT a fault)
+E2E_SM_NODATA --> E2E_SM_INVALID : transitToInvalidExtended\n&& error before any reception
+
+E2E_SM_INIT --> E2E_SM_VALID : MinOkStateInit reached\nwithin WindowSizeInit (R5: NOT a fault)
+E2E_SM_INIT --> E2E_SM_INVALID : transitToInvalidExtended\n&& MaxErrorStateInit reached
+
+E2E_SM_VALID --> E2E_SM_INVALID : MaxErrorStateValid reached\nwithin WindowSizeValid (genuine fault)
+E2E_SM_INVALID --> E2E_SM_VALID : MinOkStateInvalid reached\nwithin WindowSizeInvalid
+
+note right of E2E_SM_NODATA
+  NoData/Init are warm-up states, driven by
+  E2E_SMCheck()'s configured sliding-window
+  and threshold parameters (WindowSizeInit/
+  Valid/Invalid, MinOkState*, MaxErrorState*)
+  — never a fixed single-sample rule.
+  Proposal decision (§3 of e2eerror handling.md):
+  sm_state is exposed alongside checkStatus so the
+  caller distinguishes "not enough history yet"
+  from a genuine Invalid fault, instead of an
+  ad-hoc first-sample suppression rule.
+end note
+
+note right of E2E_SM_INVALID
+  clearFromValidToInvalid config controls whether
+  the whole monitoring window is cleared or merely
+  extended on a Valid → Invalid transition.
+end note
+
+note bottom of E2E_SM_DEINIT
+  disableEndToEndStateMachine = true: skip this
+  state machine entirely; caller only receives the
+  raw per-sample checkStatus (no smState).
+end note
+
+@enduml
