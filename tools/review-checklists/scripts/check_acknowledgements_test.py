@@ -238,11 +238,55 @@ class TestValidateChecklistEvidence:
                 "check_acknowledgements.get_approving_reviewers",
                 return_value=["alice"],
             ),
+            patch(
+                "check_acknowledgements.get_review_decision",
+                return_value="APPROVED",
+            ),
         ):
             state, description = _validate_checklist_evidence(pr, SAMPLE_CHECKLISTS)
 
         assert state == "success"
         assert description == "All checklists acknowledged by all approving reviewers"
+
+    def test_pending_when_not_fully_approved_despite_all_acked(self):
+        """A single approver having acked everything must not be enough if
+        branch protection still requires further approvals — otherwise a
+        still-outstanding required reviewer's later approval could satisfy
+        GitHub's native review-count check against an already-green, stale
+        status before this reviewer's own acknowledgement is verified."""
+        pr = MagicMock()
+        pr.get_files.return_value = [_make_file("src/api/foo.py")]
+
+        api_review_comment = MagicMock(id=100)
+        api_review_comment.body = "<!-- review-checklist:api-review -->"
+
+        ok_reply = _make_comment(
+            101,
+            "OK",
+            "alice",
+            datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc),
+        )
+        ok_reply.in_reply_to_id = 100
+        pr.get_review_comments.return_value = [ok_reply]
+
+        with (
+            patch(
+                "check_acknowledgements.find_existing_checklist_comments",
+                return_value={"api-review": api_review_comment},
+            ),
+            patch(
+                "check_acknowledgements.get_approving_reviewers",
+                return_value=["alice"],
+            ),
+            patch(
+                "check_acknowledgements.get_review_decision",
+                return_value="REVIEW_REQUIRED",
+            ),
+        ):
+            state, description = _validate_checklist_evidence(pr, SAMPLE_CHECKLISTS)
+
+        assert state == "pending"
+        assert description == "Awaiting full branch-protection approval"
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +295,7 @@ class TestValidateChecklistEvidence:
 
 
 class TestCheckAcknowledgementsMain:
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.load_checklists",
@@ -270,7 +314,7 @@ class TestCheckAcknowledgementsMain:
             main()
         mock_status.assert_called_once_with(repo, "abc", "success", "No checklists applicable")
 
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.find_existing_checklist_comments",
@@ -297,7 +341,7 @@ class TestCheckAcknowledgementsMain:
 
         mock_status.assert_called_once_with(repo, "abc", "pending", "Checklist comments not yet posted")
 
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.load_checklists",
@@ -341,9 +385,10 @@ class TestCheckAcknowledgementsMain:
 
         mock_status.assert_called_once_with(repo, "abc", "pending", "Checklist comments not yet posted")
 
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch("check_acknowledgements.get_approving_reviewers", return_value=[])
+    @patch("check_acknowledgements.get_review_decision", return_value="APPROVED")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
@@ -351,7 +396,7 @@ class TestCheckAcknowledgementsMain:
     @patch("check_acknowledgements.get_repo_and_pr")
     @patch("check_acknowledgements.get_github_client")
     def test_no_approvers_sets_pending(
-        self, mock_gh, mock_repo_pr, mock_load, mock_approvers, mock_status, mock_in_queue
+        self, mock_gh, mock_repo_pr, mock_load, mock_review_decision, mock_approvers, mock_status, mock_in_queue
     ):
         repo = MagicMock()
         pr = MagicMock()
@@ -376,12 +421,13 @@ class TestCheckAcknowledgementsMain:
 
         mock_status.assert_called_with(repo, "abc", "pending", "Awaiting at least one approving review")
 
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.get_approving_reviewers",
         return_value=["alice"],
     )
+    @patch("check_acknowledgements.get_review_decision", return_value="APPROVED")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
@@ -393,6 +439,7 @@ class TestCheckAcknowledgementsMain:
         mock_gh,
         mock_repo_pr,
         mock_load,
+        mock_review_decision,
         mock_approvers,
         mock_status,
         mock_in_queue,
@@ -442,12 +489,13 @@ class TestCheckAcknowledgementsMain:
             data = json.load(f)
         assert data["api-review"] == ["alice"]
 
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=False)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.get_approving_reviewers",
         return_value=["alice", "bob"],
     )
+    @patch("check_acknowledgements.get_review_decision", return_value="APPROVED")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
@@ -459,6 +507,7 @@ class TestCheckAcknowledgementsMain:
         mock_gh,
         mock_repo_pr,
         mock_load,
+        mock_review_decision,
         mock_approvers,
         mock_status,
         mock_in_queue,
@@ -499,26 +548,28 @@ class TestCheckAcknowledgementsMain:
 
         mock_status.assert_called_with(repo, "abc", "pending", "api-review: awaiting bob")
 
-    @patch("check_acknowledgements.ensure_merge_queue_notice_description")
-    @patch("check_acknowledgements.ensure_merge_queue_notice_comment")
-    @patch("check_acknowledgements.is_pr_in_merge_queue", return_value=True)
+    @patch("check_acknowledgements.refresh_merge_queue_notice")
     @patch("check_acknowledgements.set_commit_status")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
     )
+    @patch("check_acknowledgements.find_existing_checklist_comments", return_value={})
     @patch("check_acknowledgements.get_repo_and_pr")
     @patch("check_acknowledgements.get_github_client")
-    def test_merge_queue_notice_refreshed_when_pr_enqueued(
+    def test_merge_queue_notice_refresh_invoked(
         self,
         mock_gh,
         mock_repo_pr,
+        mock_existing,
         mock_load,
         mock_status,
-        mock_in_queue,
-        mock_notice_comment,
-        mock_notice_description,
+        mock_refresh_notice,
     ):
+        # The detailed status/wording logic (modified/unmodified/unknown)
+        # lives in and is unit-tested against helpers.refresh_merge_queue_notice
+        # directly; this just verifies check_acknowledgements.py wires it up
+        # with the right arguments for every non-merge_group event.
         repo = MagicMock()
         pr = MagicMock()
         pr.head.sha = "abc"
@@ -528,8 +579,7 @@ class TestCheckAcknowledgementsMain:
         with patch.object(sys, "argv", ["check_acknowledgements"]):
             main()
 
-        mock_notice_comment.assert_called_once_with(pr)
-        mock_notice_description.assert_called_once_with(pr)
+        mock_refresh_notice.assert_called_once_with(pr, {})
 
     @patch("check_acknowledgements.set_commit_status")
     @patch("check_acknowledgements.get_repo_and_pr")
@@ -568,6 +618,7 @@ class TestCheckAcknowledgementsMain:
         "check_acknowledgements.get_approving_reviewers",
         return_value=["alice"],
     )
+    @patch("check_acknowledgements.get_review_decision", return_value="APPROVED")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
@@ -575,7 +626,7 @@ class TestCheckAcknowledgementsMain:
     @patch("check_acknowledgements.get_repo_and_pr")
     @patch("check_acknowledgements.get_github_client")
     def test_merge_group_validates_evidence_and_sets_success(
-        self, mock_gh, mock_repo_pr, mock_load, mock_approvers, mock_status
+        self, mock_gh, mock_repo_pr, mock_load, mock_review_decision, mock_approvers, mock_status
     ):
         repo = MagicMock()
         pr = MagicMock()
@@ -631,6 +682,7 @@ class TestCheckAcknowledgementsMain:
         "check_acknowledgements.get_approving_reviewers",
         return_value=["alice", "bob"],
     )
+    @patch("check_acknowledgements.get_review_decision", return_value="APPROVED")
     @patch(
         "check_acknowledgements.load_checklists",
         return_value=SAMPLE_CHECKLISTS,
@@ -638,7 +690,7 @@ class TestCheckAcknowledgementsMain:
     @patch("check_acknowledgements.get_repo_and_pr")
     @patch("check_acknowledgements.get_github_client")
     def test_merge_group_validates_evidence_and_sets_pending_on_missing_ack(
-        self, mock_gh, mock_repo_pr, mock_load, mock_approvers, mock_status
+        self, mock_gh, mock_repo_pr, mock_load, mock_review_decision, mock_approvers, mock_status
     ):
         repo = MagicMock()
         pr = MagicMock()

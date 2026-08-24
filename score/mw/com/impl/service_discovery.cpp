@@ -291,7 +291,7 @@ auto ServiceDiscovery::GetServiceDiscoveryClient(const InstanceIdentifier& insta
 {
     InstanceIdentifierView instance_identifier_view{instance_identifier};
     auto binding_type = instance_identifier_view.GetServiceInstanceDeployment().GetBindingType();
-    auto binding_runtime = runtime_.GetBindingRuntime(binding_type);
+    auto* binding_runtime = runtime_.GetBindingRuntime(binding_type);
 
     if (binding_runtime == nullptr)
     {

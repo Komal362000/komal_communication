@@ -24,9 +24,10 @@ review comment (finding) that contains the ``OK`` keyword.  This script:
 3. For each checklist, finds the bot-posted review comment and its OK replies.
 4. Builds a mapping: checklist-id → set of reviewers who said OK.
 5. Compares against the set of approving reviewers.
-6. Sets commit status to *success* only when every approving reviewer has
-   acknowledged every relevant checklist.  Otherwise sets *pending* or
-   *failure*.
+6. Sets commit status to *success* only when the PR is fully approved per
+   branch protection (GitHub's ``reviewDecision``) **and** every approving
+   reviewer has acknowledged every relevant checklist. Otherwise sets
+   *pending* or *failure*.
 
 This script is invoked on every checklist-relevant event (it is always the
 last step run), so it doubles as the single, fully stateless source of
@@ -53,17 +54,16 @@ from typing import Any
 from helpers import (
     build_evidence_block,
     collect_acknowledgement_details,
-    ensure_merge_queue_notice_comment,
-    ensure_merge_queue_notice_description,
     find_existing_checklist_comments,
     find_ok_replies_for_checklists,
     get_approving_reviewers,
     get_changed_files,
     get_github_client,
     get_repo_and_pr,
-    is_pr_in_merge_queue,
+    get_review_decision,
     load_checklists,
     match_checklists,
+    refresh_merge_queue_notice,
     set_commit_status,
     update_pr_description_with_evidence,
 )
@@ -88,13 +88,28 @@ def _acknowledgement_status(
     approvers: list[str],
     posted_relevant_ids: list[str],
     acks: dict[str, set[str]],
+    review_decision: str | None,
 ) -> tuple[str, str]:
     """Compute the (state, description) commit-status pair from ack data.
 
     Pure decision logic with no side effects, so it can be reused both for
     the live PR flow (which also refreshes evidence/comments) and for
     merge_group evidence validation (which must not write anything).
+
+    ``review_decision`` must be GitHub's own ``"APPROVED"`` verdict (the PR
+    currently satisfies its required-review branch-protection rules) before
+    this can go green. Without this gate, status could turn "success" from
+    only the *current* approver set (e.g. 1 of 2 required approvals), and a
+    still-outstanding required reviewer's later approval would instantly
+    satisfy GitHub's native review-count check against that stale, already
+    green status — before this (slower, two-stage) workflow re-runs to
+    verify the new reviewer also acknowledged every checklist. Requiring
+    "APPROVED" first means the status can only go green once no further
+    required review can arrive to race against it.
     """
+    if review_decision != "APPROVED":
+        return "pending", "Awaiting full branch-protection approval"
+
     if not approvers:
         return "pending", "Awaiting at least one approving review"
 
@@ -140,7 +155,8 @@ def _validate_checklist_evidence(pr: Any, checklists: list[dict]) -> tuple[str, 
 
     acks = _collect_ok_acknowledgements(pr, existing, posted_relevant_ids)
     approvers = get_approving_reviewers(pr)
-    return _acknowledgement_status(approvers, posted_relevant_ids, acks)
+    review_decision = get_review_decision(pr)
+    return _acknowledgement_status(approvers, posted_relevant_ids, acks, review_decision)
 
 
 def main() -> None:
@@ -186,6 +202,8 @@ def main() -> None:
 
     repo, pr = get_repo_and_pr(gh)
 
+    existing = find_existing_checklist_comments(pr)
+
     # Note this is intentionally separate from the `merge_group` branch
     # above (which already implies the PR is in the queue and instead
     # re-validates evidence and returns/exits). This check instead covers
@@ -193,9 +211,7 @@ def main() -> None:
     # comment posted on a PR that happens to still be enqueued) fires while
     # the PR is enqueued, so we can (re-)post the advisory merge-queue
     # notice for it.
-    if is_pr_in_merge_queue(pr):
-        ensure_merge_queue_notice_comment(pr)
-        ensure_merge_queue_notice_description(pr)
+    refresh_merge_queue_notice(pr, existing)
 
     checklists = load_checklists(args.config_path)
     changed_files = get_changed_files(pr)
@@ -205,7 +221,6 @@ def main() -> None:
         set_commit_status(repo, pr.head.sha, "success", "No checklists applicable")
         return
 
-    existing = find_existing_checklist_comments(pr)
     posted_relevant_ids = [checklist["id"] for checklist in relevant_checklists if checklist["id"] in existing]
 
     if len(posted_relevant_ids) < len(relevant_checklists):
@@ -228,7 +243,8 @@ def main() -> None:
     update_pr_description_with_evidence(pr, evidence_block)
 
     approvers = get_approving_reviewers(pr)
-    state, description = _acknowledgement_status(approvers, posted_relevant_ids, acks)
+    review_decision = get_review_decision(pr)
+    state, description = _acknowledgement_status(approvers, posted_relevant_ids, acks, review_decision)
     set_commit_status(repo, pr.head.sha, state, description)
     print(f"Acknowledgement status: {state} — {description}")
 

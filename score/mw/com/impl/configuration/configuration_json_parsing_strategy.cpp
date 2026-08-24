@@ -685,7 +685,7 @@ auto ParseServiceInstanceDeployments(const score::json::Object& json_map,
     auto deplymentObjs_result = deploymentInstances->second.As<score::json::List>();
     SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(deplymentObjs_result.has_value(),
                                                       "Configuration corrupted, check with json schema");
-    auto& deplymentObjs = deplymentObjs_result.value().get();
+    const auto& deplymentObjs = deplymentObjs_result.value().get();
     for (const auto& deploymentInstance : deplymentObjs)
     {
         auto deployment_obj = deploymentInstance.As<score::json::Object>();
@@ -1055,7 +1055,7 @@ auto ParseGlobalProperties(const score::json::Object& top_level_object) -> Globa
                                                           "Configuration corrupted, check with json schema");
         const auto& process_properties_map = process_properties_obj.value().get();
         const auto asil_level = ParseAsilLevel(process_properties_map);
-        if (asil_level.has_value() == false)
+        if (!asil_level.has_value())
         {
             // set default (ASIL-QM)
             global_configuration.SetProcessAsilLevel(QualityType::kASIL_QM);

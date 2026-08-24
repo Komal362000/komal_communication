@@ -91,7 +91,7 @@ void score::memory::shared::MemoryResourceRegistry::remove_resource(const Memory
     {
         if (!resource_it->second->IsOffsetPtrBoundsCheckBypassingEnabled())
         {
-            const auto start_address = resource_it->second->getBaseAddress();
+            auto* const start_address = resource_it->second->getBaseAddress();
             const auto start_address_as_integer = CastPointerToInteger(start_address);
             region_map_.RemoveKnownRegion(start_address_as_integer);
         }

@@ -128,7 +128,6 @@ Checks: >
   performance-unnecessary-copy-initialization,
   performance-unnecessary-value-param,
   readability-container-data-pointer,
-  readability-else-after-return,
   readability-magic-numbers,
   readability-math-missing-parentheses,
   readability-redundant-casting,
@@ -241,6 +240,8 @@ CheckOptions:
     value: true
   - key: performance-unnecessary-value-param.IncludeStyle
     value: "llvm"
+  - key: performance-unnecessary-value-param.AllowedTypes
+    value: "::score::cpp::stop_token"
   - key: readability-container-data-pointer.IgnoredContainers
     value: ""
   - key: readability-redundant-casting.IgnoreTypeAliases

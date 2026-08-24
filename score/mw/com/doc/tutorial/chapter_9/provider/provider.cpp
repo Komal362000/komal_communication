@@ -203,7 +203,7 @@ int main()
         std::array<float, 4U> new_pressures{};
         for (std::size_t index = 0U; index < tires.size(); ++index)
         {
-            auto& [field, field_name, tire] = tires[index];
+            const auto& [field, field_name, tire] = tires[index];
             new_pressures[index] = UpdateField(field, field_name, pressure_distribution(random_engine));
         }
 

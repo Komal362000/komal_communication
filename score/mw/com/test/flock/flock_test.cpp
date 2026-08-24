@@ -18,7 +18,7 @@
 
 #include <fcntl.h>
 #include <unistd.h>
-#include <signal.h>
+#include <csignal>
 #include <cstring>
 #include <iostream>
 #include <string>

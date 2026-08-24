@@ -310,7 +310,7 @@ const MapApiLanesStamped& GetSamplePtrValue(const MapApiLanesStamped* const samp
 /// Assumes that the object in memory being pointed to is of type MapApiLanesStamped.
 const MapApiLanesStamped& GetSamplePtrValue(const void* const void_ptr)
 {
-    auto* const typed_ptr = static_cast<const MapApiLanesStamped*>(void_ptr);
+    const auto* const typed_ptr = static_cast<const MapApiLanesStamped*>(void_ptr);
     return *typed_ptr;
 }
 

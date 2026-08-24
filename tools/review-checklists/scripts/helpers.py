@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime, timezone
 from typing import Any
 
 import pathspec
@@ -274,6 +275,60 @@ def get_approving_reviewers(pr: PullRequest) -> list[str]:
     return sorted(approvers)
 
 
+def get_review_decision(pr: Any) -> str | None:
+    """Return the PR's branch-protection review decision via GraphQL.
+
+    ``reviewDecision`` is GitHub's own computed verdict on whether the PR
+    currently satisfies its required-review branch-protection rules (required
+    approving review count, CODEOWNERS, etc.) — one of ``"APPROVED"``,
+    ``"REVIEW_REQUIRED"``, or ``"CHANGES_REQUESTED"``. It is not exposed via
+    the REST API, hence the GraphQL round-trip.
+
+    Used to gate the "review-checklists" commit status: it must not go
+    green from a partial/current approver set alone (see
+    ``_acknowledgement_status``) if the PR is not yet fully approved per
+    branch protection — otherwise a still-outstanding required reviewer
+    could approve later, instantly satisfying GitHub's native review-count
+    check against our *already-green*, stale status, before our (slower,
+    two-stage) workflow has re-validated that this new reviewer has also
+    acknowledged every checklist.
+
+    Returns ``None`` on any lookup failure so callers can fail closed
+    (treat as not yet fully approved) rather than silently proceeding.
+    """
+    owner_and_name = _resolve_repo_owner_and_name(pr)
+    if owner_and_name is None:
+        print("Could not determine repository for review-decision lookup")
+        return None
+    owner, name = owner_and_name
+
+    number = _resolve_pr_number(pr)
+    if number is None:
+        print("Could not determine PR number for review-decision lookup")
+        return None
+
+    query = """
+      query($owner: String!, $name: String!, $number: Int!) {
+        repository(owner: $owner, name: $name) {
+          pullRequest(number: $number) {
+            reviewDecision
+          }
+        }
+      }
+    """
+
+    try:
+        result = _run_graphql_query(
+            query,
+            {"owner": owner, "name": name, "number": int(number)},
+        )
+    except Exception as exc:
+        print(f"GraphQL review-decision lookup failed: {exc}")
+        return None
+
+    return result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("reviewDecision")
+
+
 # GitHub's commit-status API silently truncates/rejects descriptions longer
 # than this; keep our own text within the limit explicitly.
 COMMIT_STATUS_DESCRIPTION_MAX_LENGTH = 140
@@ -308,20 +363,61 @@ MERGE_QUEUE_NOTICE_END = "<!-- review-checklist-merge-queue-notice:end -->"
 # Marker for a bot-managed PR comment carrying the same notice.
 MERGE_QUEUE_COMMENT_MARKER = "<!-- review-checklist-merge-queue-comment -->"
 
-MERGE_QUEUE_NOTICE = [
-    MERGE_QUEUE_NOTICE_START,
+_MERGE_QUEUE_NOTICE_HEADER = [
     "## Review Checklist Evidence Notice - Merge Queue",
     "",
-    "This pull request was modified after the review checklist evidence was recorded.",
-    "The review checklist evidence visible here does no longer reflect the evidence that will be recorded at merge.",
-    "Please rely on the evidence in the git history once the pull request was merged.",
-    "",
-    "The git history shows the evidence state at the time of merge queue entry.",
+    "This pull request is (or recently was) in the merge queue.",
     "A pull request may only enter the merge queue when all necessary review checklist acknowledgements are in place.",
-    "Changes made after this pull request enters the merge queue may update the evidence here,",
-    "but they do not affect the evidence recorded in the git history.",
-    MERGE_QUEUE_NOTICE_END,
+    "",
 ]
+
+_MERGE_QUEUE_NOTICE_BODY_BY_STATUS = {
+    # A human-authored change to checklist evidence (the description,
+    # acknowledgement-thread replies, approving reviews, or commits) was
+    # detected after this PR entered the merge queue, per GitHub's own
+    # event/edit history — not merely inferred from the PR currently being
+    # in the queue.
+    "modified": [
+        "Checklist evidence (the description, an acknowledgement reply, an approving review, or a commit)",
+        "changed after this pull request entered the merge queue.",
+        "The evidence visible here may no longer reflect what was true at merge-queue entry.",
+    ],
+    # Could not resolve the merge-queue entry timestamp, so no verdict is
+    # made either way — fail-open on the claim itself (never assert
+    # "modified" without evidence for it).
+    "unknown": [
+        "Whether checklist evidence changed since this pull request entered the merge queue could not be determined.",
+    ],
+}
+
+_MERGE_QUEUE_NOTICE_FOOTER = [
+    "",
+    "Once this pull request is merged, prefer the evidence recorded in git history over this description",
+    "where the two differ — the description keeps updating live for as long as this PR exists, while the",
+    "merge commit (if your merge-queue configuration embeds the PR title and description into it) is a",
+    "fixed, tamper-evident record of what was true at that point.",
+]
+
+
+def _build_merge_queue_notice_lines(status: str) -> list[str]:
+    """Build the merge-queue notice body lines for the given evidence status.
+
+    ``status`` is one of ``"modified"`` or ``"unknown"`` (see
+    ``checklist_evidence_modified_since`` / ``get_merge_queue_state``) and
+    selects which factual claim the notice makes about whether checklist
+    evidence changed since merge-queue entry. Callers never invoke this for
+    an ``"unmodified"`` verdict — nothing noteworthy to report means no
+    notice is posted or refreshed at all (see ``resolve_merge_queue_evidence_status``
+    callers in check_acknowledgements.py/post_checklists.py).
+    """
+    body = _MERGE_QUEUE_NOTICE_BODY_BY_STATUS.get(status, _MERGE_QUEUE_NOTICE_BODY_BY_STATUS["unknown"])
+    return (
+        [MERGE_QUEUE_NOTICE_START]
+        + _MERGE_QUEUE_NOTICE_HEADER
+        + body
+        + _MERGE_QUEUE_NOTICE_FOOTER
+        + [MERGE_QUEUE_NOTICE_END]
+    )
 
 
 def extract_evidence_block(description: str) -> str | None:
@@ -355,8 +451,6 @@ def build_evidence_block(
     ack_details: dict[str, list[dict[str, str]]],
 ) -> str:
     """Build the evidence block for the PR description."""
-    from datetime import datetime, timezone
-
     lines = [
         EVIDENCE_BLOCK_START,
         "<details>",
@@ -407,42 +501,91 @@ def update_pr_description_with_evidence(
         print("PR description evidence is already up to date")
 
 
-def is_pr_in_merge_queue(pr: Any) -> bool:
-    """Return whether the PR is currently in GitHub merge queue via GraphQL.
+def _resolve_repo_owner_and_name(pr: Any) -> tuple[str, str] | None:
+    """Return (owner, name) for the PR's repository, or None if unresolvable.
 
-    This is intentionally fail-closed (returns False) on any lookup error
-    rather than raising: its only callers use the result to decide whether
-    to post an advisory merge-queue notice on the PR, and a false negative
-    here at worst delays that notice until the next checklist-relevant
-    event — it never affects merge gating. The actual merge-queue gating
-    decision is made independently in check_acknowledgements.py's
-    ``merge_group`` handling, which resolves and validates the underlying
-    PR itself and fails the commit status (does not default to success)
-    if that resolution or validation fails.
+    Prefers the PR object's own base-repo reference; falls back to the
+    ``GITHUB_REPOSITORY`` environment variable (as set by Actions) when the
+    PR object doesn't carry it (e.g. a mock in tests).
     """
     repo_name = getattr(getattr(getattr(pr, "base", None), "repo", None), "full_name", "")
     if not repo_name or "/" not in repo_name:
         repo_name = os.environ.get("GITHUB_REPOSITORY", "")
     if "/" not in repo_name:
-        print("Could not determine repository for merge-queue lookup")
-        return False
+        return None
+    owner, name = repo_name.split("/", 1)
+    return owner, name
 
+
+def _resolve_pr_number(pr: Any) -> int | None:
+    """Return the PR number, falling back to the ``PR_NUMBER`` env var."""
     number = getattr(pr, "number", None)
     if not number:
         try:
             number = int(os.environ.get("PR_NUMBER", "0"))
         except ValueError:
             number = 0
-    if not number:
-        print("Could not determine PR number for merge-queue lookup")
-        return False
+    return number or None
 
-    owner, name = repo_name.split("/", 1)
+
+def get_merge_queue_state(pr: Any) -> tuple[bool, datetime | None]:
+    """Return (is_currently_in_queue, latest_enqueued_at) for the PR, via one GraphQL call.
+
+    Reads the ``AddedToMergeQueueEvent``/``RemovedFromMergeQueueEvent``
+    timeline: whichever of the two event types is chronologically *last*
+    determines current membership (an ``Added`` event with no later
+    ``Removed`` event means the PR is still enqueued), while the
+    ``createdAt`` of the latest ``AddedToMergeQueueEvent`` gives the
+    baseline timestamp comparisons should use (a PR can be dequeued and
+    re-enqueued more than once, e.g. after being kicked out for a new push).
+
+    These are real, GitHub-recorded event timestamps — not a live poll of a
+    boolean flag — so comparisons against them are not subject to the race
+    that made polling ``isInMergeQueue`` alone unreliable for deciding
+    whether content changed *after* enqueue (see
+    ``checklist_evidence_modified_since``). This single query replaces what
+    used to be two separate lookups (a live ``isInMergeQueue`` poll plus a
+    separate ``timelineItems`` query for the enqueue timestamp).
+
+    This is intentionally fail-closed (returns ``(False, None)``) on any
+    lookup error rather than raising: its only callers use the result to
+    decide whether to post an advisory merge-queue notice on the PR, and a
+    false negative here at worst delays that notice until the next
+    checklist-relevant event — it never affects merge gating. The actual
+    merge-queue gating decision is made independently in
+    check_acknowledgements.py's ``merge_group`` handling, which resolves and
+    validates the underlying PR itself and fails the commit status (does not
+    default to success) if that resolution or validation fails.
+    """
+    owner_and_name = _resolve_repo_owner_and_name(pr)
+    if owner_and_name is None:
+        print("Could not determine repository for merge-queue timeline lookup")
+        return False, None
+    owner, name = owner_and_name
+
+    number = _resolve_pr_number(pr)
+    if number is None:
+        print("Could not determine PR number for merge-queue timeline lookup")
+        return False, None
+
     query = """
       query($owner: String!, $name: String!, $number: Int!) {
         repository(owner: $owner, name: $name) {
           pullRequest(number: $number) {
-            isInMergeQueue
+            timelineItems(
+              itemTypes: [ADDED_TO_MERGE_QUEUE_EVENT, REMOVED_FROM_MERGE_QUEUE_EVENT]
+              last: 10
+            ) {
+              nodes {
+                __typename
+                ... on AddedToMergeQueueEvent {
+                  createdAt
+                }
+                ... on RemovedFromMergeQueueEvent {
+                  createdAt
+                }
+              }
+            }
           }
         }
       }
@@ -454,20 +597,207 @@ def is_pr_in_merge_queue(pr: Any) -> bool:
             {"owner": owner, "name": name, "number": int(number)},
         )
     except Exception as exc:
-        print(f"GraphQL merge-queue lookup failed: {exc}")
+        print(f"GraphQL merge-queue timeline lookup failed: {exc}")
+        return False, None
+
+    nodes = (
+        result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("timelineItems", {}).get("nodes", [])
+    )
+    events = [
+        (node["createdAt"], node.get("__typename"))
+        for node in nodes
+        if node.get("createdAt") and node.get("__typename")
+    ]
+    if not events:
+        return False, None
+
+    events.sort(key=lambda item: item[0])
+
+    added_timestamps = [created_at for created_at, typename in events if typename == "AddedToMergeQueueEvent"]
+    latest_added_at = (
+        datetime.strptime(max(added_timestamps), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        if added_timestamps
+        else None
+    )
+
+    is_in_queue = events[-1][1] == "AddedToMergeQueueEvent"
+    return is_in_queue, latest_added_at
+
+
+def _get_pr_body_human_edits_after(pr: Any, since: datetime) -> bool:
+    """Return whether a non-bot editor edited the PR description after ``since``.
+
+    Uses GraphQL ``userContentEdits`` — GitHub's own append-only edit-history
+    audit trail for the PR description — rather than any state we would have
+    to store/protect ourselves. Edits made by this action's own bot account
+    (identified by GraphQL ``__typename: Bot``, not by matching a login
+    string, so this doesn't need to know the configured bot's name) are
+    excluded, since the evidence-block refresh is expected to keep rewriting
+    the description on every run and must not itself count as "modified".
+    """
+    owner_and_name = _resolve_repo_owner_and_name(pr)
+    if owner_and_name is None:
+        print("Could not determine repository for PR body edit-history lookup")
+        return False
+    owner, name = owner_and_name
+
+    number = _resolve_pr_number(pr)
+    if number is None:
+        print("Could not determine PR number for PR body edit-history lookup")
         return False
 
-    is_in_queue = result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("isInMergeQueue")
-    if isinstance(is_in_queue, bool):
-        return is_in_queue
+    query = """
+      query($owner: String!, $name: String!, $number: Int!) {
+        repository(owner: $owner, name: $name) {
+          pullRequest(number: $number) {
+            userContentEdits(first: 100) {
+              nodes {
+                createdAt
+                editor {
+                  login
+                  __typename
+                }
+              }
+            }
+          }
+        }
+      }
+    """
 
-    print("GraphQL merge-queue lookup returned no boolean state")
+    try:
+        result = _run_graphql_query(
+            query,
+            {"owner": owner, "name": name, "number": int(number)},
+        )
+    except Exception as exc:
+        print(f"GraphQL PR body edit-history lookup failed: {exc}")
+        return False
+
+    edits = (
+        result.get("data", {}).get("repository", {}).get("pullRequest", {}).get("userContentEdits", {}).get("nodes", [])
+    )
+    for edit in edits:
+        editor = edit.get("editor") or {}
+        if editor.get("__typename") == "Bot":
+            continue
+        created_at_raw = edit.get("createdAt")
+        if not created_at_raw:
+            continue
+        created_at = datetime.strptime(created_at_raw, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        if created_at > since:
+            return True
     return False
 
 
-def _build_merge_queue_notice_block() -> str:
+def checklist_evidence_modified_since(
+    pr: Any,
+    existing_comments: dict[str, Any],
+    enqueued_at: datetime,
+) -> bool:
+    """Return whether checklist evidence changed after ``enqueued_at``.
+
+    Deliberately scoped to the same primitives ``check_acknowledgements.py``
+    already treats as "evidence" — the PR description (which carries the
+    evidence block), checklist-thread replies (OK acknowledgements),
+    approving reviews, and the commit set — rather than flagging *any*
+    human activity on the PR (an unrelated comment or an incidental
+    description typo fix elsewhere should not trigger this).
+
+    Every timestamp compared here comes from GitHub's own event/edit
+    history (GraphQL ``timelineItems``/``userContentEdits``, REST
+    ``updated_at``/``submitted_at``), not from polling a live boolean at an
+    arbitrary later time, so this is not subject to the enqueue-ordering
+    race that made unconditionally trusting a live ``isInMergeQueue`` poll
+    unreliable.
+    """
+    # 1. PR description (evidence block) edited by a human after enqueue.
+    if _get_pr_body_human_edits_after(pr, enqueued_at):
+        return True
+
+    # 2. New or edited replies in checklist finding threads (acknowledgements).
+    finding_comment_ids = {comment.id for comment in existing_comments.values()}
+    for comment in pr.get_review_comments():
+        reply_to = getattr(comment, "in_reply_to_id", None)
+        if reply_to not in finding_comment_ids:
+            continue
+        if comment.created_at > enqueued_at:
+            return True
+        updated_at = getattr(comment, "updated_at", None)
+        if updated_at and updated_at > enqueued_at and updated_at != comment.created_at:
+            return True
+
+    # 3. Approver set changed (new/changed review submitted after enqueue).
+    for review in pr.get_reviews():
+        submitted_at = getattr(review, "submitted_at", None)
+        if submitted_at and submitted_at > enqueued_at:
+            return True
+
+    # 4. New commits pushed after enqueue (defensive: a merge queue normally
+    # dequeues a PR on a new push, but this covers that possibility anyway).
+    for commit in pr.get_commits():
+        commit_date = getattr(getattr(commit.commit, "author", None), "date", None)
+        if commit_date and commit_date > enqueued_at:
+            return True
+
+    return False
+
+
+def resolve_merge_queue_evidence_status(
+    pr: Any,
+    existing_comments: dict[str, Any],
+    enqueued_at: datetime | None,
+) -> str:
+    """Return ``"modified"``, ``"unmodified"``, or ``"unknown"`` for the PR's
+    checklist evidence relative to its most recent merge-queue entry.
+
+    Combines ``enqueued_at`` (the real, GitHub-recorded enqueue timestamp,
+    from ``get_merge_queue_state``) with ``checklist_evidence_modified_since``
+    (which primitives changed after it). Returns ``"unknown"`` — never
+    guessing either way — when the enqueue timestamp itself cannot be
+    resolved, e.g. because the PR was never observed as enqueued via the
+    timeline, or the lookup failed.
+    """
+    if enqueued_at is None:
+        return "unknown"
+    return "modified" if checklist_evidence_modified_since(pr, existing_comments, enqueued_at) else "unmodified"
+
+
+def refresh_merge_queue_notice(pr: Any, existing_comments: dict[str, Any]) -> None:
+    """Post/refresh the advisory merge-queue notice (comment + description)
+    for the PR, if warranted.
+
+    This is intentionally separate from ``check_acknowledgements.py``'s
+    ``merge_group`` handling (which already implies the PR is in the queue
+    and instead re-validates evidence and fails/passes the commit status).
+    This function instead covers the case of any other event (e.g. a review
+    comment posted on a PR that happens to still be enqueued) firing while
+    the PR is enqueued, so the advisory notice can be (re-)posted for it.
+
+    No-ops entirely (posts/updates nothing) unless the PR is currently
+    enqueued (per ``get_merge_queue_state``) *and* checklist evidence
+    changed since enqueue, or we couldn't determine whether it did — an
+    "unmodified" verdict doesn't warrant a notice at all, so no comment or
+    description update happens for it.
+
+    Shared by ``check_acknowledgements.py`` and ``post_checklists.py``,
+    which both need to perform this exact check after handling their
+    respective events.
+    """
+    is_in_queue, enqueued_at = get_merge_queue_state(pr)
+    if not is_in_queue:
+        return
+
+    status = resolve_merge_queue_evidence_status(pr, existing_comments, enqueued_at)
+    if status == "unmodified":
+        return
+
+    ensure_merge_queue_notice_comment(pr, status)
+    ensure_merge_queue_notice_description(pr, status)
+
+
+def _build_merge_queue_notice_block(status: str) -> str:
     """Return the standalone merge-queue notice for PR description."""
-    return "\n".join(MERGE_QUEUE_NOTICE)
+    return "\n".join(_build_merge_queue_notice_lines(status))
 
 
 def _remove_merge_queue_notice_block(description: str) -> str:
@@ -483,10 +813,17 @@ def _remove_merge_queue_notice_block(description: str) -> str:
         return description
 
 
-def ensure_merge_queue_notice_description(pr: Any) -> None:
-    """Ensure a standalone merge-queue notice exists in the PR description."""
+def ensure_merge_queue_notice_description(pr: Any, status: str = "unknown") -> None:
+    """Ensure a standalone merge-queue notice exists in the PR description.
+
+    ``status`` (one of ``"modified"``, ``"unmodified"``, ``"unknown"``) is
+    computed by the caller via ``resolve_merge_queue_evidence_status``
+    (which itself relies on ``get_merge_queue_state``/
+    ``checklist_evidence_modified_since``) and selects which factual claim
+    the notice makes — this function itself performs no detection.
+    """
     current_description = pr.body or ""
-    notice_block = _build_merge_queue_notice_block()
+    notice_block = _build_merge_queue_notice_block(status)
     description_without_notice = _remove_merge_queue_notice_block(current_description)
     base = description_without_notice.rstrip()
     if base:
@@ -499,9 +836,12 @@ def ensure_merge_queue_notice_description(pr: Any) -> None:
         print("Updated PR description with merge-queue evidence notice")
 
 
-def ensure_merge_queue_notice_comment(pr: Any) -> None:
-    """Ensure the PR has a single bot-managed merge-queue evidence notice."""
-    body = "\n".join([MERGE_QUEUE_COMMENT_MARKER] + MERGE_QUEUE_NOTICE)
+def ensure_merge_queue_notice_comment(pr: Any, status: str = "unknown") -> None:
+    """Ensure the PR has a single bot-managed merge-queue evidence notice.
+
+    See ``ensure_merge_queue_notice_description`` for what ``status`` means.
+    """
+    body = "\n".join([MERGE_QUEUE_COMMENT_MARKER] + _build_merge_queue_notice_lines(status))
 
     existing_comment = None
     for comment in pr.get_issue_comments():

@@ -25,11 +25,13 @@ import yaml
 from helpers import (
     CHECKLIST_MARKER,
     MERGE_QUEUE_COMMENT_MARKER,
-    MERGE_QUEUE_NOTICE,
     MERGE_QUEUE_NOTICE_END,
     MERGE_QUEUE_NOTICE_START,
     OK_KEYWORD,
+    _build_merge_queue_notice_lines,
     _find_checklists_config,
+    _get_pr_body_human_edits_after,
+    checklist_evidence_modified_since,
     collect_acknowledgement_details,
     ensure_merge_queue_notice_comment,
     ensure_merge_queue_notice_description,
@@ -38,11 +40,14 @@ from helpers import (
     get_approving_reviewers,
     get_changed_files,
     get_github_client,
+    get_merge_queue_state,
     get_repo_and_pr,
-    is_pr_in_merge_queue,
+    get_review_decision,
     load_checklists,
     make_checklist_comment_body,
     match_checklists,
+    refresh_merge_queue_notice,
+    resolve_merge_queue_evidence_status,
     set_commit_status,
 )
 
@@ -512,6 +517,50 @@ class TestGetApprovingReviewers:
 
 
 # ---------------------------------------------------------------------------
+# get_review_decision
+# ---------------------------------------------------------------------------
+
+
+class TestGetReviewDecision:
+    @patch("helpers._run_graphql_query")
+    def test_returns_approved(self, mock_query):
+        mock_query.return_value = {"data": {"repository": {"pullRequest": {"reviewDecision": "APPROVED"}}}}
+
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+
+        assert get_review_decision(pr) == "APPROVED"
+
+    @patch("helpers._run_graphql_query")
+    def test_returns_review_required(self, mock_query):
+        mock_query.return_value = {"data": {"repository": {"pullRequest": {"reviewDecision": "REVIEW_REQUIRED"}}}}
+
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+
+        assert get_review_decision(pr) == "REVIEW_REQUIRED"
+
+    @patch("helpers._run_graphql_query")
+    def test_returns_none_on_graphql_failure(self, mock_query):
+        mock_query.side_effect = RuntimeError("boom")
+
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+
+        assert get_review_decision(pr) is None
+
+    def test_returns_none_when_repo_unresolvable(self):
+        pr = MagicMock()
+        pr.base = None
+        pr.number = 42
+
+        assert get_review_decision(pr) is None
+
+
+# ---------------------------------------------------------------------------
 # set_commit_status
 # ---------------------------------------------------------------------------
 
@@ -606,47 +655,111 @@ class TestFindChecklistsConfig:
 # ---------------------------------------------------------------------------
 
 
-class TestIsPrInMergeQueue:
+class TestGetMergeQueueState:
     @patch("helpers._run_graphql_query")
-    def test_true_when_graphql_returns_true(self, mock_query):
-        mock_query.return_value = {"data": {"repository": {"pullRequest": {"isInMergeQueue": True}}}}
+    def test_currently_in_queue_after_added_event(self, mock_query):
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "timelineItems": {
+                            "nodes": [
+                                {"__typename": "AddedToMergeQueueEvent", "createdAt": "2024-01-01T00:00:00Z"},
+                            ]
+                        }
+                    }
+                }
+            }
+        }
 
         pr = MagicMock()
         pr.base.repo.full_name = "org/repo"
         pr.number = 42
 
-        assert is_pr_in_merge_queue(pr) is True
+        is_in_queue, enqueued_at = get_merge_queue_state(pr)
+
+        assert is_in_queue is True
+        assert enqueued_at is not None
+        assert enqueued_at.year == 2024 and enqueued_at.day == 1
+        assert enqueued_at.tzinfo is not None
         mock_query.assert_called_once()
 
     @patch("helpers._run_graphql_query")
-    def test_false_when_graphql_returns_false(self, mock_query):
-        mock_query.return_value = {"data": {"repository": {"pullRequest": {"isInMergeQueue": False}}}}
+    def test_not_in_queue_after_removed_event(self, mock_query):
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "timelineItems": {
+                            "nodes": [
+                                {"__typename": "AddedToMergeQueueEvent", "createdAt": "2024-01-01T00:00:00Z"},
+                                {"__typename": "RemovedFromMergeQueueEvent", "createdAt": "2024-01-02T00:00:00Z"},
+                            ]
+                        }
+                    }
+                }
+            }
+        }
 
         pr = MagicMock()
         pr.base.repo.full_name = "org/repo"
-        pr.number = 7
+        pr.number = 42
 
-        assert is_pr_in_merge_queue(pr) is False
+        is_in_queue, enqueued_at = get_merge_queue_state(pr)
+
+        # Not currently enqueued, but the latest enqueue timestamp is still
+        # reported for callers that already know it's not in queue and want
+        # the last known baseline anyway.
+        assert is_in_queue is False
+        assert enqueued_at is not None
+        assert enqueued_at.day == 1
 
     @patch("helpers._run_graphql_query")
-    def test_false_when_graphql_payload_missing_field(self, mock_query):
-        mock_query.return_value = {"data": {"repository": {"pullRequest": {}}}}
+    def test_uses_latest_added_timestamp_across_reenqueue_cycles(self, mock_query):
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "timelineItems": {
+                            "nodes": [
+                                {"__typename": "AddedToMergeQueueEvent", "createdAt": "2024-01-01T00:00:00Z"},
+                                {"__typename": "RemovedFromMergeQueueEvent", "createdAt": "2024-01-02T00:00:00Z"},
+                                {"__typename": "AddedToMergeQueueEvent", "createdAt": "2024-01-03T00:00:00Z"},
+                            ]
+                        }
+                    }
+                }
+            }
+        }
 
         pr = MagicMock()
         pr.base.repo.full_name = "org/repo"
-        pr.number = 99
+        pr.number = 42
 
-        assert is_pr_in_merge_queue(pr) is False
+        is_in_queue, enqueued_at = get_merge_queue_state(pr)
+
+        assert is_in_queue is True
+        assert enqueued_at.day == 3
 
     @patch("helpers._run_graphql_query")
-    def test_false_when_graphql_call_fails(self, mock_query):
+    def test_returns_false_none_when_never_enqueued(self, mock_query):
+        mock_query.return_value = {"data": {"repository": {"pullRequest": {"timelineItems": {"nodes": []}}}}}
+
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+
+        assert get_merge_queue_state(pr) == (False, None)
+
+    @patch("helpers._run_graphql_query")
+    def test_returns_false_none_on_graphql_failure(self, mock_query):
         mock_query.side_effect = RuntimeError("boom")
 
         pr = MagicMock()
         pr.base.repo.full_name = "org/repo"
-        pr.number = 101
+        pr.number = 42
 
-        assert is_pr_in_merge_queue(pr) is False
+        assert get_merge_queue_state(pr) == (False, None)
 
 
 class TestEnsureMergeQueueNoticeDescription:
@@ -712,7 +825,7 @@ class TestEnsureMergeQueueNoticeComment:
 
     def test_noop_when_existing_comment_matches(self):
         existing = MagicMock()
-        existing.body = "\n".join([MERGE_QUEUE_COMMENT_MARKER] + MERGE_QUEUE_NOTICE)
+        existing.body = "\n".join([MERGE_QUEUE_COMMENT_MARKER] + _build_merge_queue_notice_lines("unknown"))
 
         pr = MagicMock()
         pr.get_issue_comments.return_value = [existing]
@@ -721,6 +834,256 @@ class TestEnsureMergeQueueNoticeComment:
 
         existing.edit.assert_not_called()
         pr.create_issue_comment.assert_not_called()
+
+    def test_wording_reflects_status(self):
+        pr = MagicMock()
+        pr.get_issue_comments.return_value = []
+
+        ensure_merge_queue_notice_comment(pr, status="modified")
+
+        posted = pr.create_issue_comment.call_args.args[0]
+        assert "changed after this pull request entered the merge queue" in posted
+
+
+# ---------------------------------------------------------------------------
+# get_merge_queue_state / _get_pr_body_human_edits_after /
+# checklist_evidence_modified_since / resolve_merge_queue_evidence_status
+# ---------------------------------------------------------------------------
+
+
+class TestGetPrBodyHumanEditsAfter:
+    @patch("helpers._run_graphql_query")
+    def test_true_when_human_edit_after_since(
+        self,
+        mock_query,
+    ):
+        import datetime as dt
+
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "userContentEdits": {
+                            "nodes": [
+                                {
+                                    "createdAt": "2024-01-05T00:00:00Z",
+                                    "editor": {"login": "alice", "__typename": "User"},
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+        since = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+
+        assert _get_pr_body_human_edits_after(pr, since) is True
+
+    @patch("helpers._run_graphql_query")
+    def test_false_when_only_bot_edits_after_since(self, mock_query):
+        import datetime as dt
+
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "userContentEdits": {
+                            "nodes": [
+                                {
+                                    "createdAt": "2024-01-05T00:00:00Z",
+                                    "editor": {"login": "review-checklists-bot", "__typename": "Bot"},
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+        since = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+
+        assert _get_pr_body_human_edits_after(pr, since) is False
+
+    @patch("helpers._run_graphql_query")
+    def test_false_when_human_edit_before_since(self, mock_query):
+        import datetime as dt
+
+        mock_query.return_value = {
+            "data": {
+                "repository": {
+                    "pullRequest": {
+                        "userContentEdits": {
+                            "nodes": [
+                                {
+                                    "createdAt": "2023-01-01T00:00:00Z",
+                                    "editor": {"login": "alice", "__typename": "User"},
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+        pr = MagicMock()
+        pr.base.repo.full_name = "org/repo"
+        pr.number = 42
+        since = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+
+        assert _get_pr_body_human_edits_after(pr, since) is False
+
+
+class TestChecklistEvidenceModifiedSince:
+    def _base_pr(self):
+        import datetime as dt
+
+        pr = MagicMock()
+        pr.get_review_comments.return_value = []
+        pr.get_reviews.return_value = []
+        pr.get_commits.return_value = []
+        return pr, dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=True)
+    def test_true_when_body_edited(self, _mock_edits):
+        pr, enqueued_at = self._base_pr()
+        assert checklist_evidence_modified_since(pr, {}, enqueued_at) is True
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=False)
+    def test_true_when_finding_reply_after_enqueue(self, _mock_edits):
+        import datetime as dt
+
+        pr, enqueued_at = self._base_pr()
+        finding_comment = MagicMock()
+        finding_comment.id = 111
+        existing = {"finding-1": finding_comment}
+
+        reply = MagicMock()
+        reply.in_reply_to_id = 111
+        reply.created_at = enqueued_at + dt.timedelta(hours=1)
+        reply.updated_at = reply.created_at
+        pr.get_review_comments.return_value = [reply]
+
+        assert checklist_evidence_modified_since(pr, existing, enqueued_at) is True
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=False)
+    def test_false_when_reply_unrelated_to_finding(self, _mock_edits):
+        import datetime as dt
+
+        pr, enqueued_at = self._base_pr()
+        finding_comment = MagicMock()
+        finding_comment.id = 111
+        existing = {"finding-1": finding_comment}
+
+        unrelated_reply = MagicMock()
+        unrelated_reply.in_reply_to_id = 999
+        unrelated_reply.created_at = enqueued_at + dt.timedelta(hours=1)
+        unrelated_reply.updated_at = unrelated_reply.created_at
+        pr.get_review_comments.return_value = [unrelated_reply]
+
+        assert checklist_evidence_modified_since(pr, existing, enqueued_at) is False
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=False)
+    def test_true_when_approving_review_after_enqueue(self, _mock_edits):
+        import datetime as dt
+
+        pr, enqueued_at = self._base_pr()
+        review = MagicMock()
+        review.submitted_at = enqueued_at + dt.timedelta(hours=1)
+        pr.get_reviews.return_value = [review]
+
+        assert checklist_evidence_modified_since(pr, {}, enqueued_at) is True
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=False)
+    def test_true_when_commit_after_enqueue(self, _mock_edits):
+        import datetime as dt
+
+        pr, enqueued_at = self._base_pr()
+        commit = MagicMock()
+        commit.commit.author.date = enqueued_at + dt.timedelta(hours=1)
+        pr.get_commits.return_value = [commit]
+
+        assert checklist_evidence_modified_since(pr, {}, enqueued_at) is True
+
+    @patch("helpers._get_pr_body_human_edits_after", return_value=False)
+    def test_false_when_nothing_changed(self, _mock_edits):
+        pr, enqueued_at = self._base_pr()
+        assert checklist_evidence_modified_since(pr, {}, enqueued_at) is False
+
+
+class TestResolveMergeQueueEvidenceStatus:
+    def test_unknown_when_enqueued_at_is_none(self):
+        pr = MagicMock()
+        assert resolve_merge_queue_evidence_status(pr, {}, None) == "unknown"
+
+    @patch("helpers.checklist_evidence_modified_since", return_value=True)
+    def test_modified_when_evidence_changed(self, _mock_modified):
+        import datetime as dt
+
+        pr = MagicMock()
+        enqueued_at = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+        assert resolve_merge_queue_evidence_status(pr, {}, enqueued_at) == "modified"
+
+    @patch("helpers.checklist_evidence_modified_since", return_value=False)
+    def test_unmodified_when_evidence_unchanged(self, _mock_modified):
+        import datetime as dt
+
+        pr = MagicMock()
+        enqueued_at = dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc)
+        assert resolve_merge_queue_evidence_status(pr, {}, enqueued_at) == "unmodified"
+
+
+class TestRefreshMergeQueueNotice:
+    @patch("helpers.ensure_merge_queue_notice_description")
+    @patch("helpers.ensure_merge_queue_notice_comment")
+    @patch("helpers.get_merge_queue_state", return_value=(False, None))
+    def test_noop_when_not_in_queue(self, _mock_state, mock_comment, mock_description):
+        pr = MagicMock()
+        refresh_merge_queue_notice(pr, {})
+        mock_comment.assert_not_called()
+        mock_description.assert_not_called()
+
+    @patch("helpers.resolve_merge_queue_evidence_status", return_value="unmodified")
+    @patch("helpers.ensure_merge_queue_notice_description")
+    @patch("helpers.ensure_merge_queue_notice_comment")
+    @patch("helpers.get_merge_queue_state")
+    def test_noop_when_in_queue_but_unmodified(self, mock_state, mock_comment, mock_description, _mock_resolve):
+        import datetime as dt
+
+        mock_state.return_value = (True, dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc))
+        pr = MagicMock()
+        refresh_merge_queue_notice(pr, {})
+        mock_comment.assert_not_called()
+        mock_description.assert_not_called()
+
+    @patch("helpers.resolve_merge_queue_evidence_status", return_value="modified")
+    @patch("helpers.ensure_merge_queue_notice_description")
+    @patch("helpers.ensure_merge_queue_notice_comment")
+    @patch("helpers.get_merge_queue_state")
+    def test_posts_notice_when_in_queue_and_modified(self, mock_state, mock_comment, mock_description, _mock_resolve):
+        import datetime as dt
+
+        mock_state.return_value = (True, dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc))
+        pr = MagicMock()
+        refresh_merge_queue_notice(pr, {})
+        mock_comment.assert_called_once_with(pr, "modified")
+        mock_description.assert_called_once_with(pr, "modified")
+
+    @patch("helpers.resolve_merge_queue_evidence_status", return_value="unknown")
+    @patch("helpers.ensure_merge_queue_notice_description")
+    @patch("helpers.ensure_merge_queue_notice_comment")
+    @patch("helpers.get_merge_queue_state")
+    def test_posts_notice_when_in_queue_and_unknown(self, mock_state, mock_comment, mock_description, _mock_resolve):
+        import datetime as dt
+
+        mock_state.return_value = (True, dt.datetime(2024, 1, 1, tzinfo=dt.timezone.utc))
+        pr = MagicMock()
+        refresh_merge_queue_notice(pr, {})
+        mock_comment.assert_called_once_with(pr, "unknown")
+        mock_description.assert_called_once_with(pr, "unknown")
 
 
 if __name__ == "__main__":

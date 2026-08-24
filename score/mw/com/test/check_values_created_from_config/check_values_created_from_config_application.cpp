@@ -100,7 +100,7 @@ class ConfigParser
 
     std::optional<std::string> GetShmName() const noexcept
     {
-        const auto lola_service_type_deployment =
+        const auto* const lola_service_type_deployment =
             std::get_if<score::mw::com::impl::LolaServiceTypeDeployment>(&type_deployment_.binding_info_);
         if (lola_service_type_deployment == nullptr)
         {

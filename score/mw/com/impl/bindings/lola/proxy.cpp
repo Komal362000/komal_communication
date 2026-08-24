@@ -564,7 +564,7 @@ ConsumerEventDataControlLocalView<> Proxy::GetConsumerEventDataControlLocalView(
     SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(control_ != nullptr,
                                                       "Proxy::GetEventControl: Managed memory control pointer is Null");
     auto& service_data_control = GetServiceDataControl(*control_);
-    const auto event_entry = service_data_control.event_controls_.find(element_fq_id);
+    auto* const event_entry = service_data_control.event_controls_.find(element_fq_id);
     if (event_entry == service_data_control.event_controls_.end())
     {
         score::mw::log::LogFatal("lola") << __func__ << __LINE__
@@ -594,7 +594,7 @@ EventSubscriptionControl<>& Proxy::GetEventSubscriptionControl(const ElementFqId
     SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(control_ != nullptr,
                                                       "Proxy::GetEventControl: Managed memory control pointer is Null");
     auto& service_data_control = GetServiceDataControl(*control_);
-    const auto event_entry = service_data_control.event_controls_.find(element_fq_id);
+    auto* const event_entry = service_data_control.event_controls_.find(element_fq_id);
     if (event_entry == service_data_control.event_controls_.end())
     {
         score::mw::log::LogFatal("lola") << __func__ << __LINE__
@@ -614,7 +614,7 @@ TransactionLogSet& Proxy::GetTransactionLogSet(const ElementFqId element_fq_id)
     SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(control_ != nullptr,
                                                       "Proxy::GetEventControl: Managed memory control pointer is Null");
     auto& service_data_control = GetServiceDataControl(*control_);
-    const auto event_entry = service_data_control.event_controls_.find(element_fq_id);
+    auto* const event_entry = service_data_control.event_controls_.find(element_fq_id);
     if (event_entry == service_data_control.event_controls_.end())
     {
         score::mw::log::LogFatal("lola") << __func__ << __LINE__
@@ -634,7 +634,7 @@ const EventMetaInfo& Proxy::GetEventMetaInfo(const ElementFqId element_fq_id) co
     SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(data_ != nullptr,
                                                       "Proxy::GetEventMetaInfo: Managed memory data pointer is Null");
     auto& service_data_storage = detail_proxy::GetServiceDataStorage(*data_);
-    const auto event_meta_info_entry = service_data_storage.events_metainfo_.find(element_fq_id);
+    auto* const event_meta_info_entry = service_data_storage.events_metainfo_.find(element_fq_id);
     if (event_meta_info_entry == service_data_storage.events_metainfo_.end())
     {
         score::mw::log::LogFatal("lola") << __func__ << __LINE__
@@ -663,7 +663,7 @@ bool Proxy::IsEventProvided(const std::string_view event_name) const
                                                       "IsEventProvided: Managed memory control pointer is Null");
     auto& service_data_control = GetServiceDataControl(*control_);
     const auto element_fq_id = event_name_to_element_fq_id_converter_.Convert(event_name);
-    const auto event_entry = service_data_control.event_controls_.find(element_fq_id);
+    auto* const event_entry = service_data_control.event_controls_.find(element_fq_id);
     const bool event_exists = (event_entry != service_data_control.event_controls_.end());
     return event_exists;
 }

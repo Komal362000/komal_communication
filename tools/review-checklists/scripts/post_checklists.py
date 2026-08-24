@@ -29,13 +29,10 @@ import argparse
 from helpers import (
     build_evidence_block,
     collect_acknowledgement_details,
-    ensure_merge_queue_notice_comment,
-    ensure_merge_queue_notice_description,
     find_existing_checklist_comments,
     get_changed_files,
     get_github_client,
     get_repo_and_pr,
-    is_pr_in_merge_queue,
     load_checklists,
     make_checklist_comment_body,
     match_checklists,
@@ -105,10 +102,6 @@ def main() -> None:
         ack_details = collect_acknowledgement_details(pr, existing, posted_relevant_ids)
         evidence_block = build_evidence_block(relevant_checklists, ack_details)
         update_pr_description_with_evidence(pr, evidence_block)
-
-    if is_pr_in_merge_queue(pr):
-        ensure_merge_queue_notice_comment(pr)
-        ensure_merge_queue_notice_description(pr)
 
     # Set a pending check — actual pass/fail is determined by check_acknowledgements.
     set_commit_status(

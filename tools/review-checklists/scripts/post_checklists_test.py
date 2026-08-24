@@ -133,66 +133,6 @@ class TestPostChecklistsMain:
 
         existing_review.edit.assert_not_called()
 
-    @patch("post_checklists.ensure_merge_queue_notice_description")
-    @patch("post_checklists.ensure_merge_queue_notice_comment")
-    @patch("post_checklists.is_pr_in_merge_queue", return_value=True)
-    @patch("post_checklists.set_commit_status")
-    @patch("post_checklists.find_existing_checklist_comments", return_value={})
-    @patch("post_checklists.load_checklists", return_value=SAMPLE_CHECKLISTS)
-    @patch("post_checklists.get_repo_and_pr")
-    @patch("post_checklists.get_github_client")
-    def test_merge_queue_posts_notice_comment_and_description(
-        self,
-        mock_gh,
-        mock_repo_pr,
-        mock_load,
-        mock_existing,
-        mock_status,
-        mock_in_queue,
-        mock_notice_comment,
-        mock_notice_description,
-    ):
-        repo = MagicMock()
-        pr = MagicMock()
-        pr.head.sha = "abc123"
-        pr.get_files.return_value = [_make_file("src/api/handler.py")]
-        mock_repo_pr.return_value = (repo, pr)
-
-        main()
-
-        mock_notice_comment.assert_called_once_with(pr)
-        mock_notice_description.assert_called_once_with(pr)
-
-    @patch("post_checklists.ensure_merge_queue_notice_description")
-    @patch("post_checklists.ensure_merge_queue_notice_comment")
-    @patch("post_checklists.is_pr_in_merge_queue", return_value=False)
-    @patch("post_checklists.set_commit_status")
-    @patch("post_checklists.find_existing_checklist_comments", return_value={})
-    @patch("post_checklists.load_checklists", return_value=SAMPLE_CHECKLISTS)
-    @patch("post_checklists.get_repo_and_pr")
-    @patch("post_checklists.get_github_client")
-    def test_non_merge_queue_does_not_post_notice(
-        self,
-        mock_gh,
-        mock_repo_pr,
-        mock_load,
-        mock_existing,
-        mock_status,
-        mock_in_queue,
-        mock_notice_comment,
-        mock_notice_description,
-    ):
-        repo = MagicMock()
-        pr = MagicMock()
-        pr.head.sha = "abc123"
-        pr.get_files.return_value = [_make_file("src/api/handler.py")]
-        mock_repo_pr.return_value = (repo, pr)
-
-        main()
-
-        mock_notice_comment.assert_not_called()
-        mock_notice_description.assert_not_called()
-
 
 if __name__ == "__main__":
     sys.exit(pytest.main(sys.argv[1:]))

@@ -24,9 +24,11 @@ files they're approving.
 It also understands GitHub's merge queue: when the queue runs its checks
 (`merge_group`) it re-validates the originating PR's checklist evidence
 from scratch rather than assuming it is still valid, and while a PR is
-enqueued and subsequently changed (reviewed, commented on, edited) it
-posts a notice explaining that the evidence already recorded is what will
-be carried into the merge commit.
+enqueued it posts a notice on any other checklist-relevant event
+(reviewed, commented on, edited) explaining that the evidence block in
+the PR description is a live, ever-updating view — the authoritative,
+tamper-evident record of what evidence existed is the merge commit's
+message in git history, not this description.
 
 ## How it works
 
@@ -154,6 +156,15 @@ each repository that wants to use it.**
    and this should be reconsidered. You can check your repository's
    configured merge method under the ruleset's `merge_queue` rule
    (`merge_method`).
+
+   Even with `MERGE` selected, GitHub does **not** default to embedding the
+   PR title/description into the merge commit message — by default the
+   merge commit message is a generic "Merge pull request #N from ..."
+   line, which does not capture the evidence block at all. You must also
+   configure the repository so the merge commit message is built from the
+   PR title and body:
+   - `merge_commit_title: "PR_TITLE"`
+   - `merge_commit_message: "PR_BODY"`
 7. **Reviewers must acknowledge by replying `OK`** (exact text,
    case-insensitive) directly in the threaded conversation under the
    bot-posted checklist comment — a general PR approval alone does not

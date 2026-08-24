@@ -25,7 +25,7 @@
 #include <gmock/gmock.h>
 
 #include <unistd.h>
-#include <stdint.h>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -92,19 +92,19 @@ ServiceTypeDeployment CreateTypeDeployment(const uint16_t lola_service_id,
                                            const std::vector<std::pair<std::string, std::uint8_t>>& method_ids)
 {
     LolaServiceTypeDeployment::EventIdMapping event_id_mapping{};
-    for (auto& event_with_id : event_ids)
+    for (const auto& event_with_id : event_ids)
     {
         event_id_mapping.insert(event_with_id);
     }
 
     LolaServiceTypeDeployment::FieldIdMapping field_id_mapping{};
-    for (auto& field_with_id : field_ids)
+    for (const auto& field_with_id : field_ids)
     {
         field_id_mapping.insert(field_with_id);
     }
 
     LolaServiceTypeDeployment::MethodIdMapping method_id_mapping{};
-    for (auto& method_with_id : method_ids)
+    for (const auto& method_with_id : method_ids)
     {
         method_id_mapping.insert(method_with_id);
     }
@@ -360,7 +360,7 @@ EventControl& SkeletonMockedMemoryFixture::GetEventControlFromServiceDataControl
     ElementFqId element_fq_id,
     ServiceDataControl& service_data_control) noexcept
 {
-    auto event_control_it = service_data_control.event_controls_.find(element_fq_id);
+    auto* event_control_it = service_data_control.event_controls_.find(element_fq_id);
     EXPECT_NE(event_control_it, service_data_control.event_controls_.cend());
     auto& event_control = event_control_it->second;
     return event_control;
@@ -370,7 +370,7 @@ ProviderEventDataControlLocalView<> SkeletonMockedMemoryFixture::GetProviderEven
     ElementFqId element_fq_id,
     ServiceDataControl& service_data_control) noexcept
 {
-    auto event_control_it = service_data_control.event_controls_.find(element_fq_id);
+    auto* event_control_it = service_data_control.event_controls_.find(element_fq_id);
     EXPECT_NE(event_control_it, service_data_control.event_controls_.cend());
 
     auto& event_control = event_control_it->second;
@@ -381,7 +381,7 @@ ConsumerEventDataControlLocalView<> SkeletonMockedMemoryFixture::GetConsumerEven
     ElementFqId element_fq_id,
     ServiceDataControl& service_data_control) noexcept
 {
-    auto event_control_it = service_data_control.event_controls_.find(element_fq_id);
+    auto* event_control_it = service_data_control.event_controls_.find(element_fq_id);
     EXPECT_NE(event_control_it, service_data_control.event_controls_.cend());
 
     auto& event_control = event_control_it->second;
@@ -392,7 +392,7 @@ TransactionLogSet& SkeletonMockedMemoryFixture::GetTransactionLogSetFromServiceD
     ElementFqId element_fq_id,
     ServiceDataControl& service_data_control) noexcept
 {
-    auto event_control_it = service_data_control.event_controls_.find(element_fq_id);
+    auto* event_control_it = service_data_control.event_controls_.find(element_fq_id);
     EXPECT_NE(event_control_it, service_data_control.event_controls_.cend());
 
     auto& event_control = event_control_it->second;
