@@ -1,0 +1,43 @@
+' *******************************************************************************
+' Copyright (c) 2026 Contributors to the Eclipse Foundation
+'
+' See the NOTICE file(s) distributed with this work for additional
+' information regarding copyright ownership.
+'
+' This program and the accompanying materials are made available under the
+' terms of the Apache License Version 2.0 which is available at
+' https://www.apache.org/licenses/LICENSE-2.0
+'
+' SPDX-License-Identifier: Apache-2.0
+' *******************************************************************************
+@startuml e2e_error_handling_dynamic
+
+autonumber "<b>[00]"
+skinparam stereotypePosition bottom
+
+actor "Application" as APP
+participant "ProxyEvent" as impl_proxy_event <<unit>>
+participant "E2E Library" as e2e_library <<unit>>
+
+activate APP
+APP -> impl_proxy_event ++: GetNewSamples()
+
+loop for each received sample
+    impl_proxy_event -> e2e_library ++: E2E_PxxCheck(sample)
+    alt input error (null / wrong length)
+        return E2E_E_INPUTERR_NULL / E2E_E_INPUTERR_WRONG
+        note right : usage/config defect, surfaced immediately (assert/log), NOT a checkStatus value (spec 4.5)
+    else normal check
+        return E2E_E_OK, checkStatus (R1, R3)
+        opt state machine enabled
+            impl_proxy_event -> e2e_library ++: E2E_SMCheck(checkStatus)
+            return smState (R5)
+        end
+        impl_proxy_event -> impl_proxy_event ++: GetE2EResult() : E2EResult
+        return
+        note over impl_proxy_event, APP : each iteration delivers sample + the E2EResult{checkStatus, smState} from GetE2EResult()
+    end
+end
+deactivate APP
+
+@enduml

@@ -14,6 +14,7 @@
 filegroup(
     name = "general",
     srcs = [
+        "e2e_check_result_misinterpreted_fta.puml",
         "in_memory_configuration_wrong_fta.puml",
     ],
     visibility = ["//score/mw/com/dependability:__subpackages__"],

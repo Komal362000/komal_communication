@@ -23,7 +23,9 @@ component(
         ":frontend_skeleton",
         ":frontend_proxy",
     ],
-    requirements = [],
+    requirements = [
+        "//score/mw/com/dependability/requirements/component_requirements:component_requirements_e2e_error_handling",
+    ],
     target_compatible_with = ["@platforms//os:linux"],
     tests = [],
     visibility = ["//score/mw/com/dependability:__pkg__"],

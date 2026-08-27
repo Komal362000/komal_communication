@@ -897,3 +897,16 @@ section "LoLa" {
         }
     }
 }
+
+section "E2E" {
+
+    // FMEA: E2E error handling
+    ScoreReq.FailureMode ApplicationMisinterpretsE2ECheckResult {
+        guidewords = [ ScoreReq.Guideword.Wrong ]
+        description = "The application misinterprets the E2E check result of a received sample and treats it as valid/trustworthy when it is not."
+        failureeffect = "Safety-relevant use of E2E-protected data proceeds despite the data not being confirmed valid, which could lead to a violation of the safety goal the E2E protection was meant to uphold."
+        version = 1
+        safety = ScoreReq.Asil.B
+        rationale = "Each of the following root causes is covered by a dedicated AoU pushed to the integrating application, since the SEooC itself cannot enforce correct interpretation of the check result on the caller side."
+    }
+}
