@@ -105,6 +105,12 @@ int main()
     // This handler is invoked asynchronously by score::mw::com whenever the set of matching service instances changes.
     // It receives *all* currently matching handles. We create a proxy for every newly discovered instance.
     auto find_service_handler = [&discovered_instances_mutex, &discovered_instances, &known_handles](
+                                    // The enclosing score::mw::com::FindServiceHandler is a type-erased callback
+                                    // whose call signature takes this parameter by value; the caller already
+                                    // copies the container into that fixed signature before invoking this lambda,
+                                    // so taking it by const& here would not avoid any copy - it would only
+                                    // (misleadingly) hide the fact that one already happened.
+                                    // NOLINTNEXTLINE(performance-unnecessary-value-param)
                                     score::mw::com::ServiceHandleContainer<HelloWorldProxy::HandleType> handles,
                                     score::mw::com::FindServiceHandle) noexcept {
         std::lock_guard<std::mutex> lock{discovered_instances_mutex};

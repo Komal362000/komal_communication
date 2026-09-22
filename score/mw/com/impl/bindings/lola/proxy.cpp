@@ -350,7 +350,7 @@ ElementFqId Proxy::EventNameToElementFqIdConverter::Convert(const std::string_vi
 // in case 'service_instance_usage_marker_file' doesn't have value but as we check before with 'has_value()'
 // so no way for throwing std::bad_optional_access which leds to std::terminate().
 // coverity[autosar_cpp14_a15_5_3_violation : FALSE]
-std::unique_ptr<Proxy> Proxy::Create(const HandleType handle)
+std::unique_ptr<Proxy> Proxy::Create(const HandleType& handle)
 {
     const auto& instance_deployment = GetLoLaInstanceDeployment(handle);
     const auto& lola_service_deployment = GetLoLaServiceTypeDeployment(handle);
@@ -455,7 +455,7 @@ Proxy::Proxy(std::shared_ptr<memory::shared::ManagedMemoryResource> control,
       offered_state_machine_{},
       are_proxy_methods_setup_{false},
       are_proxy_methods_subscribed_{false},
-      filesystem_{filesystem},
+      filesystem_{std::move(filesystem)},
       find_service_handle_{},
       prepare_deinitialize_called_{false},
       finalize_deinitialize_called_{false}
@@ -622,6 +622,30 @@ TransactionLogSet& Proxy::GetTransactionLogSet(const ElementFqId element_fq_id)
         std::terminate();
     }
     return event_entry->second.transaction_log_set_;
+}
+
+const EventDataStorage& Proxy::GetEventDataStorage(const ElementFqId element_fq_id) const
+{
+    SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(
+        data_ != nullptr, "Proxy::GetEventDataStorage: Managed memory data pointer is Null");
+    auto& service_data_storage = detail_proxy::GetServiceDataStorage(*data_);
+    auto* const event_entry = service_data_storage.events_.find(element_fq_id);
+    if (event_entry == service_data_storage.events_.end())
+    {
+        score::mw::log::LogFatal("lola") << __func__ << __LINE__
+                                         << "Unable to find data storage for given event instance. Terminating.";
+        SCORE_LANGUAGE_FUTURECPP_PRECONDITION_PRD_MESSAGE(false,
+                                                          "Unable to find data storage for given event instance.");
+    }
+    // Suppress "AUTOSAR C++14 A5-3-2" rule finding. This rule declares: "Null pointers shall not be dereferenced.".
+    // The "event_entry" variable is an iterator of interprocess map returned by the "find" method.
+    // A check is made that the iterator is not equal to map.end(). Therefore, the call to "event_entry->"
+    // does not return nullptr.
+    // coverity[autosar_cpp14_a5_3_2_violation]
+    const auto* event_data_storage_ptr = event_entry->second.get();
+    SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(event_data_storage_ptr != nullptr,
+                                                "Could not get EventDataStorage from OffsetPtr");
+    return *event_data_storage_ptr;
 }
 
 // Suppress "AUTOSAR C++14 A15-5-3" rule findings. This rule states: "The std::terminate() function shall not be called
@@ -979,7 +1003,14 @@ void Proxy::StartProxyAutoReconnect()
 {
     auto& service_discovery = impl::Runtime::getInstance().GetServiceDiscovery();
     const auto find_service_handle_result = service_discovery.StartFindService(
-        [this](ServiceHandleContainer<HandleType> service_handle_container, FindServiceHandle) {
+        [this](
+            // The enclosing FindServiceHandler is a type-erased callback whose call signature takes this
+            // parameter by value; the caller already copies it into that fixed signature before invoking this
+            // lambda, so taking it by const& here would not avoid any copy - it would only (misleadingly) hide
+            // the fact that one already happened.
+            // NOLINTNEXTLINE(performance-unnecessary-value-param)
+            ServiceHandleContainer<HandleType> service_handle_container,
+            FindServiceHandle) {
             std::lock_guard lock{proxy_event_registration_mutex_};
             is_service_instance_available_ = !service_handle_container.empty();
             ServiceAvailabilityChangeHandler(is_service_instance_available_);
