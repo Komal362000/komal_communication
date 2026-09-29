@@ -20,3 +20,10 @@ cc_unit_test(
     features = COMPILER_WARNING_FEATURES,
     deps = ["//score/mw/com/impl/e2e:e2e_profile_stub"],
 )
+
+cc_unit_test(
+    name = "e2e_health_tracker_test",
+    srcs = ["e2e_health_tracker_test.cpp"],
+    features = COMPILER_WARNING_FEATURES,
+    deps = ["//score/mw/com/impl/e2e:e2e_health_tracker"],
+)
